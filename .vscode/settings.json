@@ -1,0 +1,9 @@
+{
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.vscode": true,
+        "LICENSE": true,
+        "dev": true
+    },
+    "python.analysis.extraPaths": []
+}
