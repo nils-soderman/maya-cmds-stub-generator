@@ -2,30 +2,22 @@ import logging
 import time
 import os
 
-import populate_functions
-import documentaion
-import base_types
-import maya_info
+from . import populate_functions, documentaion, base_types, maya_info
 
-logging.basicConfig(level=logging.DEBUG)
-
+logger = logging.getLogger(__name__)
 
 def generate_string() -> str:
     commands: list[base_types.Command] = []
 
     with maya_info.MayaStandalone():
-        cmds_commands = maya_info.cmds_info.get_commands()
-
         documentation_commands = documentaion.index.get_commands(maya_info.version())
         for doc_command in documentation_commands:
-            # if doc_command.command not in cmds_commands:
-                # TODO: Don't skip these, some of them are only not avaliable in mayapy.exe, use any num of arguments
-                # logging.warning(f'Skipping command documented but not found in `maya.cmds`: "{doc_command.command}"')
-                # continue
-
             doc_info = documentaion.command.get_info(doc_command.url)
 
-            command = base_types.Command(doc_command.command, doc_info)
+            positional_args = maya_info.cmds_info.get_positional_args(doc_command.command)
+            positional_args = [base_types.Argument(arg.name, arg.argument_type, arg.default) for arg in positional_args]
+
+            command = base_types.Command(doc_command.command, doc_info, positional_args)
             populate_functions.main(command)
 
             commands.append(command)
@@ -45,11 +37,11 @@ def generate_stubs(out_filepath: str) -> None:
 
     code = generate_string()
 
+    if os.path.isdir(out_filepath):
+        out_filepath = os.path.join(out_filepath, "cmds.pyi")
+
     os.makedirs(os.path.dirname(out_filepath), exist_ok=True)
     with open(out_filepath, "w") as f:
         f.write(code)
 
-    logging.info(f"Generated stubs in {time.perf_counter() - start_time:.2f} seconds")
-
-
-generate_stubs("D:/Projects/Programming/Python_Packages/cmds-stub-generator/dist/cmds.pyi")
+    logger.info(f"Generated stubs in {time.perf_counter() - start_time:.2f} seconds")

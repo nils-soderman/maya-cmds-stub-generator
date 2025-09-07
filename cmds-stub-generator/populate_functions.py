@@ -1,5 +1,5 @@
-import base_types
-import documentaion.command
+from . import base_types
+from .documentaion import command
 
 TYPE_LOOKUP = {
     "boolean": "bool",
@@ -8,15 +8,15 @@ TYPE_LOOKUP = {
     "int64": "int",
     "name": "str",
     "linear": "float",
-    "angle": "float",
-    "script": "__t.Callable",
+    "angle": "float|str",
+    "script": "__t.Callable|str",
     "time": "float",
     "timerange": "tuple[float, float]",
     "floatrange": "tuple[float, float]",
 }
 
 
-def get_arg_type(flag: documentaion.command.Flag):
+def get_arg_type(flag: command.Flag):
     def __get_type(arg: str):
         if arg.endswith("[]"):
             base_type = arg.removesuffix("[]")
@@ -41,7 +41,7 @@ def get_arg_type(flag: documentaion.command.Flag):
     return __get_type(arg_type)
 
 
-def flag_to_arg(flag: documentaion.command.Flag, query=False) -> base_types.Argument:
+def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
     arg_type = get_arg_type(flag)
     if flag.multi_use:
         arg_type = f"multiuse[{arg_type}]"  #f"__t.Sequence[{arg_type}]|{arg_type}"
@@ -63,9 +63,7 @@ def main(command: base_types.Command):
         base_types.Function(
             name=command.name,
             positional_arguments=[],
-            keyword_arguments=create_args,
-            return_type=None,
-            docstring=None
+            keyword_arguments=create_args
         )
     )
 
@@ -78,9 +76,7 @@ def main(command: base_types.Command):
             base_types.Function(
                 name=command.name,
                 positional_arguments=[],
-                keyword_arguments=edit_args,
-                return_type=None,
-                docstring=None
+                keyword_arguments=edit_args
             )
         )
 
@@ -100,7 +96,6 @@ def main(command: base_types.Command):
                 name=command.name,
                 positional_arguments=[],
                 keyword_arguments=[query_arg, flag_arg],
-                return_type=get_arg_type(flag),
-                docstring=None
+                return_type=get_arg_type(flag)
             )
         )

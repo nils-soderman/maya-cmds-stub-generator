@@ -3,20 +3,20 @@
 """
 from dataclasses import dataclass
 
-from documentaion.command import CommandDocumentation
+from .documentaion.command import CommandDocumentation
 
 @dataclass
 class Argument:
     name: str
-    argument_type: str
+    argument_type: str | None = None
     default: str | None = None
 
     def get_string(self) -> str:
         string = self.name
-        
+
         if self.argument_type:
             string += f":{self.argument_type}"
-        
+
         if self.default is not None:
             string += f"={self.default}"
 
@@ -28,26 +28,31 @@ class Function:
     name: str
     positional_arguments: list[Argument]
     keyword_arguments: list[Argument]
-    return_type: str | None
-    docstring: str | None
+    return_type: str | None = "__t.Any"
+    docstring: str | None = None
 
     def get_string(self) -> str:
         string = f"def {self.name}("
 
+        has_star_args = any(arg.name.startswith("*") for arg in self.positional_arguments)
+
         if self.positional_arguments:
             string += ",".join(arg.get_string() for arg in self.positional_arguments)
-            string += ",/"
+            if not has_star_args:
+                string += ",/"
             if self.keyword_arguments:
                 string += ","
 
         if self.keyword_arguments:
             keyword_args_str = ",".join(arg.get_string() for arg in self.keyword_arguments)
-            string += f"*,{keyword_args_str}"
+            if not has_star_args:
+                keyword_args_str = f"*,{keyword_args_str}"
+            string += keyword_args_str
 
         string += ")"
 
-        if self.return_type:
-            string += f"->{self.return_type}"
+        return_type = self.return_type or "__t.Any"
+        string += f"->{return_type}"
 
         string += ":"
 
@@ -60,13 +65,15 @@ class Function:
 
 
 class Command:
-    def __init__(self, name: str, command_docs: CommandDocumentation) -> None:
+    def __init__(self, name: str, command_docs: CommandDocumentation, positional_args: list[Argument]) -> None:
         self.name = name
         self.command_docs = command_docs
+        self.positional_args = positional_args
 
         self._functions: list[Function] = []
 
     def add_function(self, function: Function) -> None:
+        function.positional_arguments = self.positional_args + function.positional_arguments
         self._functions.append(function)
 
     def get_string(self) -> str:
@@ -74,7 +81,7 @@ class Command:
         if len(self._functions) > 1:
             delimiter = "\n@__t.overload\n"
 
-        outstring =  delimiter.join(func.get_string() for func in self._functions)
+        outstring = delimiter.join(func.get_string() for func in self._functions)
 
         if len(self._functions) > 1:
             outstring = f"@__t.overload\n{outstring}"
