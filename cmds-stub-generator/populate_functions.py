@@ -9,7 +9,7 @@ TYPE_LOOKUP = {
     "name": "str",
     "linear": "float",
     "angle": "float|str",
-    "script": "__t.Callable|str",
+    "script": "Callable|str",
     "time": "float",
     "timerange": "tuple[float, float]",
     "floatrange": "tuple[float, float]",
@@ -44,7 +44,7 @@ def get_arg_type(flag: command.Flag):
 def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
     arg_type = get_arg_type(flag)
     if flag.multi_use:
-        arg_type = f"multiuse[{arg_type}]"  #f"__t.Sequence[{arg_type}]|{arg_type}"
+        arg_type = f"multiuse[{arg_type}]"  #f"Sequence[{arg_type}]|{arg_type}"
 
     return base_types.Argument(
         name=flag.name_long,
@@ -70,7 +70,7 @@ def main(command: base_types.Command):
     # Edit commands
     if edit_flags := command.command_docs.get_edit_flags():
         edit_args = [flag_to_arg(x) for x in edit_flags]
-        edit_args.insert(0, base_types.Argument(name="edit", argument_type="__t.Literal[True]", default=None))
+        edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]", default=None))
 
         command.add_function(
             base_types.Function(
@@ -83,12 +83,12 @@ def main(command: base_types.Command):
     # Query commands
     query_arg = base_types.Argument(
         name="query",
-        argument_type="__t.Literal[True]",
+        argument_type="Literal[True]",
     )
     for flag in command.command_docs.get_query_flags():
         flag_arg = base_types.Argument(
             name=flag.name_long,
-            argument_type="__t.Literal[True]"
+            argument_type="Literal[True]"
         )
 
         command.add_function(

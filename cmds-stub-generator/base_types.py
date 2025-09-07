@@ -28,7 +28,7 @@ class Function:
     name: str
     positional_arguments: list[Argument]
     keyword_arguments: list[Argument]
-    return_type: str | None = "__t.Any"
+    return_type: str | None = "Any"
     docstring: str | None = None
 
     def get_string(self) -> str:
@@ -51,7 +51,7 @@ class Function:
 
         string += ")"
 
-        return_type = self.return_type or "__t.Any"
+        return_type = self.return_type or "Any"
         string += f"->{return_type}"
 
         string += ":"
@@ -79,11 +79,11 @@ class Command:
     def get_string(self) -> str:
         delimiter = "\n"
         if len(self._functions) > 1:
-            delimiter = "\n@__t.overload\n"
+            delimiter = "\n@overload\n"
 
         outstring = delimiter.join(func.get_string() for func in self._functions)
 
         if len(self._functions) > 1:
-            outstring = f"@__t.overload\n{outstring}"
+            outstring = f"@overload\n{outstring}"
 
         return outstring

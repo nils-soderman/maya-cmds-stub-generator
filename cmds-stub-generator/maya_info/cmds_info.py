@@ -16,7 +16,7 @@ TYPE_MAP = {
     "Int": "int",
     "Float": "float",
     "on|off": "bool",
-    "Script": "str|__t.Callable",
+    "Script": "str|Callable",
     "Name": "str",
     "Time": "str|float",
     "Angle": "float|str",
@@ -79,7 +79,7 @@ def get_positional_args(command: str) -> list[Argument]:
         # Single argument or list of arguments, e.g. 'String...' or 'Int...'
         if arg_str.endswith("...") and arg_str[0:-3] in TYPE_MAP:
             type = TYPE_MAP[arg_str[0:-3]]
-            return [Argument("*args", f"__t.Sequence[{type}]|{type}")]
+            return [Argument("*args", f"Sequence[{type}]|{type}")]
 
     else:  # Multiple type
         args = arg_str.split()
@@ -115,7 +115,7 @@ def get_positional_args(command: str) -> list[Argument]:
                 arguments.append(Argument(f"arg{i+1}", arg_type, default="..."))
             if listable_types:
                 listable_type = "|".join(listable_types)
-                arguments.append(Argument("*args", f"__t.Sequence[{listable_type}]|{listable_type}"))
+                arguments.append(Argument("*args", f"Sequence[{listable_type}]|{listable_type}"))
 
             return arguments
 
