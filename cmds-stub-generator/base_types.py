@@ -30,9 +30,14 @@ class Function:
     keyword_arguments: list[Argument]
     return_type: str | None = "Any"
     docstring: str | None = None
+    deprecated: bool = False
 
     def get_string(self) -> str:
-        string = f"def {self.name}("
+        string = ""
+        if self.deprecated:
+            string = "@deprecated\n"
+        
+        string += f"def {self.name}("
 
         has_star_args = any(arg.name.startswith("*") for arg in self.positional_arguments)
 

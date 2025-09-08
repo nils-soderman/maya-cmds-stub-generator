@@ -54,6 +54,17 @@ def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
 
 
 def main(command: base_types.Command):
+    if command.command_docs.obsolete:
+        command.add_function(
+            base_types.Function(
+                name=command.name,
+                positional_arguments=[],
+                keyword_arguments=[],
+                docstring="This command is obsolete.",
+                deprecated=True
+            )
+        )
+        return
 
     # Create command
     create_flag = command.command_docs.get_create_flags()
@@ -68,7 +79,8 @@ def main(command: base_types.Command):
     )
 
     # Edit commands
-    if edit_flags := command.command_docs.get_edit_flags():
+    if command.command_docs.docstring.editable:
+        edit_flags = command.command_docs.get_edit_flags()
         edit_args = [flag_to_arg(x) for x in edit_flags]
         edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]", default=None))
 
@@ -81,21 +93,32 @@ def main(command: base_types.Command):
         )
 
     # Query commands
-    query_arg = base_types.Argument(
-        name="query",
-        argument_type="Literal[True]",
-    )
-    for flag in command.command_docs.get_query_flags():
-        flag_arg = base_types.Argument(
-            name=flag.name_long,
-            argument_type="Literal[True]"
+    if command.command_docs.docstring.queryable:
+        query_arg = base_types.Argument(
+            name="query",
+            argument_type="Literal[True]",
         )
 
         command.add_function(
             base_types.Function(
                 name=command.name,
                 positional_arguments=[],
-                keyword_arguments=[query_arg, flag_arg],
-                return_type=get_arg_type(flag)
+                keyword_arguments=[query_arg],
+                return_type="Any"
             )
         )
+
+        for flag in command.command_docs.get_query_flags():
+            flag_arg = base_types.Argument(
+                name=flag.name_long,
+                argument_type="Literal[True]"
+            )
+
+            command.add_function(
+                base_types.Function(
+                    name=command.name,
+                    positional_arguments=[],
+                    keyword_arguments=[query_arg, flag_arg],
+                    return_type=get_arg_type(flag)
+                )
+            )

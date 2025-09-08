@@ -24,11 +24,20 @@ class Flag(typing.NamedTuple):
     create: bool
     multi_use: bool
 
+
+class DocsString(typing.NamedTuple):
+    undoable: bool
+    queryable: bool
+    editable: bool
+
+
 @dataclass
 class CommandDocumentation:
-    docstring: str
+    docstring: DocsString
     flags: tuple[Flag, ...]
     examples: str | None
+
+    obsolete: bool = False
 
     def get_query_flags(self) -> list[Flag]:
         return [flag for flag in self.flags if flag.query]
@@ -40,8 +49,7 @@ class CommandDocumentation:
         return [flag for flag in self.flags if flag.edit]
 
 
-
-def get_html(url: str, use_cache: bool = True) -> str: # TODO: Flip use_cache to false, this is only for initial development
+def get_html(url: str, use_cache: bool = True) -> str:  # TODO: Flip use_cache to false, this is only for initial development
     cache_path: None | str = None
     if use_cache:
         cache_path = os.path.join(tempfile.gettempdir(), "cmds_stub_generator_cache", hashlib.md5(url.encode()).hexdigest() + ".html")
@@ -60,7 +68,7 @@ def get_html(url: str, use_cache: bool = True) -> str: # TODO: Flip use_cache to
         return text
 
 
-def extract_docstring(soup: BeautifulSoup) -> str:
+def parse_docstring(soup: BeautifulSoup) -> DocsString:
     synopsis_tag = soup.find("p", id="synopsis")
     hflags_tag = soup.find("a", {"name": "hFlags"})
     hflags_h2 = hflags_tag.find_parent("h2") if hflags_tag else None
@@ -73,10 +81,24 @@ def extract_docstring(soup: BeautifulSoup) -> str:
         if current and current != hflags_h2:
             doc_parts.append(str(current))
 
-    doc_html = "<br/>".join(doc_parts)
-    doc_text = BeautifulSoup(doc_html, "html.parser").get_text(separator="\n", strip=True)
+    if not doc_parts:
+        return DocsString(False, False, False)
 
-    return doc_text
+    # doc_html = "<br/>".join(doc_parts)
+    # doc_text = BeautifulSoup(doc_html, "html.parser").get_text(separator=" ", strip=True)
+
+    undoable_queryable_editable_doc = doc_parts[0]  # '<p>aaf2fcp is <b>NOT undoable</b>, <b>NOT queryable</b>, and <b>NOT editable</b>.</p>'
+
+    # Check if command is undoable, queryable & editable
+    undoable = "NOT undoable" not in undoable_queryable_editable_doc
+    queryable = "NOT queryable" not in undoable_queryable_editable_doc
+    editable = "NOT editable" not in undoable_queryable_editable_doc
+
+    return DocsString(
+        undoable,
+        queryable,
+        editable
+    )
 
 
 def extract_flags(soup: BeautifulSoup) -> typing.Generator[Flag, None, None]:
@@ -135,13 +157,20 @@ def extract_examples(soup: BeautifulSoup) -> str | None:
     return None
 
 
+def is_obsolete(soup: BeautifulSoup) -> bool:
+    # Look in the header for the word Obsolete
+    h1_tag = soup.find("h1")
+    return h1_tag is not None and "Obsolete" in h1_tag.get_text()
+
+
 def parse_html(html: str) -> CommandDocumentation:
     soup = BeautifulSoup(html, "html.parser")
 
     return CommandDocumentation(
-        docstring=extract_docstring(soup),
+        docstring=parse_docstring(soup),
         flags=tuple(extract_flags(soup)),
-        examples=extract_examples(soup)
+        examples=extract_examples(soup),
+        obsolete=is_obsolete(soup)
     )
 
 

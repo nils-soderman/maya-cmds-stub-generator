@@ -13,10 +13,11 @@ def generate_string() -> str:
         documentation_commands = documentaion.index.get_commands(maya_info.version())
         for doc_command in documentation_commands:
             doc_info = documentaion.command.get_info(doc_command.url)
-
-            positional_args = maya_info.cmds_info.get_positional_args(doc_command.command)
-            positional_args = [base_types.Argument(arg.name, arg.argument_type, arg.default) for arg in positional_args]
-
+            if not doc_info.obsolete:
+                positional_args = maya_info.cmds_info.get_positional_args(doc_command.command)
+                positional_args = [base_types.Argument(arg.name, arg.argument_type, arg.default) for arg in positional_args]
+            else:
+                positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
             command = base_types.Command(doc_command.command, doc_info, positional_args)
             populate_functions.main(command)
 
