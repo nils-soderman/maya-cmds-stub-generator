@@ -21,6 +21,7 @@ TYPE_MAP = {
     "Time": "str|float",
     "Angle": "float|str",
     "Length": "float|str",
+    "Any": "Any",
 }
 
 
@@ -60,6 +61,9 @@ def get_positional_args(command: str) -> list[Argument]:
         logger.warning(f"Removing comment in parentheses from arg type for command '{command}': \"{arg_str}\"")
         arg_str = PATTERN_PARENS.sub("", arg_str).strip()
 
+    if "[...]" in arg_str: # Used in setAttr as Name[...], where it takes name then Any
+        arg_str = arg_str.replace("[...]", " Any...")
+
     # Args may or may not be encapsulated in brackets: [String], [Int...]
     # From what I could find the brackets seems to have no affect on the meaning
     # Remove the brackets for easier parsing, some are nested so repeat a few times
@@ -78,8 +82,10 @@ def get_positional_args(command: str) -> list[Argument]:
 
         # Single argument or list of arguments, e.g. 'String...' or 'Int...'
         if arg_str.endswith("...") and arg_str[0:-3] in TYPE_MAP:
-            type = TYPE_MAP[arg_str[0:-3]]
-            return [Argument("*args", f"Sequence[{type}]|{type}")]
+            arg_type = TYPE_MAP[arg_str[0:-3]]
+            if arg_type != "Any":
+                arg_type = f"Sequence[{arg_type}]|{arg_type}"
+            return [Argument("*args", arg_type)]
 
     else:  # Multiple type
         args = arg_str.split()
@@ -115,7 +121,9 @@ def get_positional_args(command: str) -> list[Argument]:
                 arguments.append(Argument(f"arg{i+1}", arg_type, default="..."))
             if listable_types:
                 listable_type = "|".join(listable_types)
-                arguments.append(Argument("*args", f"Sequence[{listable_type}]|{listable_type}"))
+                if listable_type != "Any":
+                    listable_type = f"Sequence[{listable_type}]|{listable_type}"
+                arguments.append(Argument("*args", listable_type))
 
             return arguments
 
