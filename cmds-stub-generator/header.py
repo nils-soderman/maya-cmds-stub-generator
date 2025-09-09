@@ -9,8 +9,10 @@ from typing import TypeVar, TypeAlias, Union, Sequence, Callable, Literal, Any, 
 try:  # warnings.deprecated was added in Python 3.13
     from warnings import deprecated  # type: ignore
 except ImportError:
-    def deprecated(func: Callable) -> Callable:
-        return func
+    def deprecated(msg: str):
+        def decorator(func: Callable) -> Callable:
+            return func
+        return decorator
 
 T = TypeVar("T")
 multiuse: TypeAlias = Union[Sequence[T], T]

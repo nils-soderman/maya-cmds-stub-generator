@@ -60,8 +60,8 @@ def main(command: base_types.Command):
                 name=command.name,
                 positional_arguments=[],
                 keyword_arguments=[],
-                docstring="This command is obsolete.",
-                deprecated=True
+                deprecated=True,
+                deprecation_message=command.command_docs.obsolete_message
             )
         )
         return

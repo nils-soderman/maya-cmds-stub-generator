@@ -38,6 +38,7 @@ class CommandDocumentation:
     examples: str | None
 
     obsolete: bool = False
+    obsolete_message: str | None = None
 
     def get_query_flags(self) -> list[Flag]:
         return [flag for flag in self.flags if flag.query]
@@ -158,19 +159,55 @@ def extract_examples(soup: BeautifulSoup) -> str | None:
 
 
 def is_obsolete(soup: BeautifulSoup) -> bool:
+    """ 
+    Check if the command is obsolete 
+    """
     # Look in the header for the word Obsolete
     h1_tag = soup.find("h1")
     return h1_tag is not None and "Obsolete" in h1_tag.get_text()
 
 
+def get_obsolete_message(soup: BeautifulSoup) -> str:
+    """
+    Get the obsolete message for the command
+    """
+    # The obsolete message text is placed directly in the body tag
+    body = soup.find("body")
+    if isinstance(body, bs4.Tag):
+        texts: list[str] = []
+        for child in body.children:
+            # Skip banner and toolbar
+            if isinstance(child, bs4.element.Tag):
+                if child.get("id") == "banner":
+                    continue
+                element_class = child.get("class") or []
+                if "toolbar" in element_class:
+                    continue
+
+            if isinstance(child, bs4.element.Tag):
+                texts.append(child.get_text(separator=" ", strip=True))
+            elif isinstance(child, str) and child.strip():
+                texts.append(child.strip())
+
+        full_text = " ".join(texts).strip()
+        if full_text:
+            return full_text
+
+    return "This command is obsolete."
+
+
 def parse_html(html: str) -> CommandDocumentation:
     soup = BeautifulSoup(html, "html.parser")
 
+    obsolete = is_obsolete(soup)
+    obsolete_message = get_obsolete_message(soup) if obsolete else None
+
     return CommandDocumentation(
-        docstring=parse_docstring(soup),
+        parse_docstring(soup),
         flags=tuple(extract_flags(soup)),
         examples=extract_examples(soup),
-        obsolete=is_obsolete(soup)
+        obsolete=obsolete,
+        obsolete_message=obsolete_message
     )
 
 
