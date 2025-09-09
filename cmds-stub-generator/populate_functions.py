@@ -16,7 +16,7 @@ TYPE_LOOKUP = {
 }
 
 
-def get_arg_type(flag: command.Flag):
+def get_arg_type(flag: command.Flag) -> str | None:
     def __get_type(arg: str):
         if arg.endswith("[]"):
             base_type = arg.removesuffix("[]")
@@ -24,6 +24,9 @@ def get_arg_type(flag: command.Flag):
             return f"list[{__get_type(base_type)}]"
 
         return TYPE_LOOKUP.get(arg, arg)
+
+    if flag.arg_type is None:
+        return None
 
     arg_type = flag.arg_type.strip()
 
@@ -44,7 +47,7 @@ def get_arg_type(flag: command.Flag):
 def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
     arg_type = get_arg_type(flag)
     if flag.multi_use:
-        arg_type = f"multiuse[{arg_type}]"  #f"Sequence[{arg_type}]|{arg_type}"
+        arg_type = f"multiuse[{arg_type}]"  # f"Sequence[{arg_type}]|{arg_type}"
 
     return base_types.Argument(
         name=flag.name_long,
@@ -114,11 +117,18 @@ def main(command: base_types.Command):
                 argument_type="Literal[True]"
             )
 
+            if flag.is_query_only():
+                # If a flag is query only, it will have the argument type 'boolean'
+                # So then we cannot deduce a return type from it
+                return_type = "Any"
+            else:
+                return_type = get_arg_type(flag) or "Any"
+
             command.add_function(
                 base_types.Function(
                     name=command.name,
                     positional_arguments=[],
                     keyword_arguments=[query_arg, flag_arg],
-                    return_type=get_arg_type(flag)
+                    return_type=return_type
                 )
             )

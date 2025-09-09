@@ -12,17 +12,20 @@ import os
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 
-
-class Flag(typing.NamedTuple):
+@dataclass
+class Flag:
     name_long: str
     name_short: str
-    arg_type: str
+    arg_type: str | None
     description: str
 
     query: bool
     edit: bool
     create: bool
     multi_use: bool
+
+    def is_query_only(self) -> bool:
+        return self.query and not self.edit and not self.create
 
 
 class DocsString(typing.NamedTuple):
@@ -123,6 +126,8 @@ def extract_flags(soup: BeautifulSoup) -> typing.Generator[Flag, None, None]:
 
         # Argument Types
         arg_type = td_type.get_text(strip=True)
+        if not arg_type:
+            arg_type = None
 
         # Properties
         create = td_property.find("img", alt="create") is not None
