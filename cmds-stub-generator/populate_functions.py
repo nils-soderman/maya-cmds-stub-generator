@@ -56,47 +56,59 @@ def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
     )
 
 
-def main(command: base_types.Command):
-    if command.command_docs.obsolete:
+def main(command: base_types.Command, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]):
+    if not docs:
+        return_type = "None" if command.name[0].isupper() else "Any"
         command.add_function(
             base_types.Function(
                 name=command.name,
-                positional_arguments=[],
+                positional_arguments=positional_args,
+                keyword_arguments=[],
+                return_type=return_type
+            )
+        )
+        return
+
+    if docs.obsolete:
+        command.add_function(
+            base_types.Function(
+                name=command.name,
+                positional_arguments=positional_args,
                 keyword_arguments=[],
                 deprecated=True,
-                deprecation_message=command.command_docs.obsolete_message
+                deprecation_message=docs.obsolete_message
             )
         )
         return
 
     # Create command
-    create_flag = command.command_docs.get_create_flags()
+    create_flag = docs.get_create_flags()
     create_args = [flag_to_arg(x) for x in create_flag]
 
     command.add_function(
         base_types.Function(
             name=command.name,
-            positional_arguments=[],
+            positional_arguments=positional_args,
             keyword_arguments=create_args
         )
     )
 
     # Edit commands
-    if command.command_docs.docstring.editable:
-        edit_flags = command.command_docs.get_edit_flags()
+    if docs.docstring.editable:
+        edit_flags = docs.get_edit_flags()
         edit_args = [flag_to_arg(x) for x in edit_flags]
         edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]", default=None))
 
         command.add_function(
             base_types.Function(
                 name=command.name,
-                positional_arguments=[],
+                positional_arguments=positional_args,
                 keyword_arguments=edit_args
             )
         )
 
     # Query commands
-    if command.command_docs.docstring.queryable:
+    if docs.docstring.queryable:
         query_arg = base_types.Argument(
             name="query",
             argument_type="Literal[True]",
@@ -105,13 +117,13 @@ def main(command: base_types.Command):
         command.add_function(
             base_types.Function(
                 name=command.name,
-                positional_arguments=[],
+                positional_arguments=positional_args,
                 keyword_arguments=[query_arg],
                 return_type="Any"
             )
         )
 
-        for flag in command.command_docs.get_query_flags():
+        for flag in docs.get_query_flags():
             flag_arg = base_types.Argument(
                 name=flag.name_long,
                 argument_type="Literal[True]"
@@ -127,7 +139,7 @@ def main(command: base_types.Command):
             command.add_function(
                 base_types.Function(
                     name=command.name,
-                    positional_arguments=[],
+                    positional_arguments=positional_args,
                     keyword_arguments=[query_arg, flag_arg],
                     return_type=return_type
                 )

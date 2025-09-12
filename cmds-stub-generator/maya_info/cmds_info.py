@@ -35,8 +35,8 @@ def default_arg() -> list[Argument]:
     return [Argument("*args")]
 
 
-def get_commands() -> set[str]:
-    return set(dir(maya.cmds))
+def get_commands() -> list[str]:
+    return [x for x in dir(maya.cmds) if not x.startswith("_") and callable(getattr(maya.cmds, x))]
 
 
 def get_positional_args(command: str) -> list[Argument]:

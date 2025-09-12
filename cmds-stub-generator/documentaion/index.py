@@ -3,15 +3,9 @@ Functions for fetching & parsing the Maya cmds documentation index
 """
 
 import urllib.request
-import typing
 import bs4
 
 from bs4 import BeautifulSoup
-
-
-class CmdsCommandPage(typing.NamedTuple):
-    command: str
-    url: str
 
 
 def get_docs_url(version: int, page: str) -> str:
@@ -34,14 +28,14 @@ def get_index_html(version: int) -> str:
         return response.read().decode('utf-8')
 
 
-def get_commands(version: int) -> list[CmdsCommandPage]:
+def get_commands(version: int) -> dict[str, str]:
     """
     Fetches and parses the Maya cmds documentation index for the given version.
     Returns a list of command names & urls.
     """
     html = get_index_html(version)
 
-    commands: list[CmdsCommandPage] = []
+    commands: dict[str, str] = {}
 
     soup = BeautifulSoup(html, "html.parser")
     for a in soup.find_all('a'):
@@ -56,6 +50,6 @@ def get_commands(version: int) -> list[CmdsCommandPage]:
 
         absolute_url = get_docs_url(version, relative_url)
 
-        commands.append(CmdsCommandPage(command=command, url=absolute_url))
+        commands[command] = absolute_url
 
     return commands

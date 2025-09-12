@@ -72,15 +72,11 @@ class Function:
 
 
 class Command:
-    def __init__(self, name: str, command_docs: CommandDocumentation, positional_args: list[Argument]) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.command_docs = command_docs
-        self.positional_args = positional_args
-
         self._functions: list[Function] = []
 
     def add_function(self, function: Function) -> None:
-        function.positional_arguments = self.positional_args + function.positional_arguments
         self._functions.append(function)
 
     def get_string(self) -> str:
