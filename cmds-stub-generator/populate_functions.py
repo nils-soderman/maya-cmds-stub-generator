@@ -94,7 +94,7 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
     )
 
     # Edit commands
-    if docs.docstring.editable:
+    if docs.editable:
         edit_flags = docs.get_edit_flags()
         edit_args = [flag_to_arg(x) for x in edit_flags]
         edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]", default=None))
@@ -108,7 +108,7 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
         )
 
     # Query commands
-    if docs.docstring.queryable:
+    if docs.queryable:
         query_arg = base_types.Argument(
             name="query",
             argument_type="Literal[True]",

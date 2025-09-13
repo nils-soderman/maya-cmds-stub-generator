@@ -34,17 +34,15 @@ class Flag:
         return self.query and not self.edit and not self.create
 
 
-class DocsString(typing.NamedTuple):
+@dataclass
+class CommandDocumentation:
     undoable: bool
     queryable: bool
     editable: bool
-    description: str | None = None
-    returns: list[ReturnValue] = []
 
+    description: str
+    returns: list[ReturnValue]
 
-@dataclass
-class CommandDocumentation:
-    docstring: DocsString
     flags: tuple[Flag, ...]
     examples: str | None
 
@@ -80,7 +78,7 @@ def get_html(url: str, use_cache: bool = True) -> str:  # TODO: Flip use_cache t
         return text
 
 
-def get_command_description(soup: BeautifulSoup) -> str | None:
+def get_command_description(soup: BeautifulSoup) -> str:
     """
     """
     body = soup.find("body")
@@ -115,7 +113,7 @@ def get_command_description(soup: BeautifulSoup) -> str | None:
             if full_text:
                 return full_text
 
-    return None
+    return ""
 
 
 def get_return_values(soup: BeautifulSoup) -> list[ReturnValue]:
@@ -129,7 +127,7 @@ def get_return_values(soup: BeautifulSoup) -> list[ReturnValue]:
         # This table has 2 columns, type and description
         if not isinstance(return_table, bs4.Tag):
             raise ValueError("Could not find return value")
-        
+
         # Either a table or single paragraph
         if return_table.name == "p":
             return [ReturnValue(return_table.get_text(strip=True), "")]
@@ -155,7 +153,7 @@ def get_return_values(soup: BeautifulSoup) -> list[ReturnValue]:
     return []
 
 
-def parse_docstring(soup: BeautifulSoup) -> DocsString:
+def get_undoable_queryable_editable(soup: BeautifulSoup) -> tuple[bool, bool, bool]:
     synopsis_tag = soup.find("p", id="synopsis")
 
     # Check if command is undoable, queryable & editable
@@ -168,16 +166,7 @@ def parse_docstring(soup: BeautifulSoup) -> DocsString:
     queryable = "NOT queryable" not in undoable_queryable_editable_doc
     editable = "NOT editable" not in undoable_queryable_editable_doc
 
-    description = get_command_description(soup)
-    return_values = get_return_values(soup)
-
-    return DocsString(
-        undoable,
-        queryable,
-        editable,
-        description,
-        return_values
-    )
+    return undoable, queryable, editable
 
 
 def extract_flags(soup: BeautifulSoup) -> typing.Generator[Flag, None, None]:
@@ -282,12 +271,18 @@ def parse_html(html: str) -> CommandDocumentation:
     obsolete = is_obsolete(soup)
     obsolete_message = get_obsolete_message(soup) if obsolete else None
 
+    undoable, queryable, editable = get_undoable_queryable_editable(soup)
+
     return CommandDocumentation(
-        parse_docstring(soup),
+        undoable=undoable,
+        queryable=queryable,
+        editable=editable,
+        description=get_command_description(soup),
+        returns=get_return_values(soup),
         flags=tuple(extract_flags(soup)),
         examples=extract_examples(soup),
         obsolete=obsolete,
-        obsolete_message=obsolete_message
+        obsolete_message=obsolete_message,
     )
 
 
