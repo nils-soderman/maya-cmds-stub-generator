@@ -12,6 +12,12 @@ import os
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 
+
+class ReturnValue(typing.NamedTuple):
+    type: str
+    description: str
+
+
 @dataclass
 class Flag:
     name_long: str
@@ -32,6 +38,8 @@ class DocsString(typing.NamedTuple):
     undoable: bool
     queryable: bool
     editable: bool
+    description: str | None = None
+    returns: list[ReturnValue] = []
 
 
 @dataclass
@@ -72,36 +80,103 @@ def get_html(url: str, use_cache: bool = True) -> str:  # TODO: Flip use_cache t
         return text
 
 
+def get_command_description(soup: BeautifulSoup) -> str | None:
+    """
+    """
+    body = soup.find("body")
+    if isinstance(body, bs4.Tag):
+        return_header = body.find("a", {"name": "hReturn"})
+        synopsis_tag = soup.find("p", id="synopsis")
+        return_header_parent = return_header.find_parent() if isinstance(return_header, bs4.Tag) else None
+        if not return_header_parent:
+            return ""
+
+        texts: list[str] = []
+        synopsis_found = False
+        for child in body.children:
+            if child == return_header_parent:
+                break
+
+            if child == synopsis_tag:
+                synopsis_found = True
+                continue
+
+            if not synopsis_found:
+                continue
+
+            if isinstance(child, bs4.element.Tag):
+                texts.append(child.get_text(separator=" ", strip=True))
+            elif isinstance(child, str) and child.strip():
+                texts.append(child.replace("\n", " ").replace("  ", " ").strip())
+
+        if len(texts) >= 2:
+            texts.pop(0)  # Remove first element which is the undoable, queryable, editable text
+            full_text = " ".join(texts).strip()
+            if full_text:
+                return full_text
+
+    return None
+
+
+def get_return_values(soup: BeautifulSoup) -> list[ReturnValue]:
+    return_a = soup.find("a", {"name": "hReturn"})
+    if isinstance(return_a, bs4.Tag):
+        return_h2 = return_a.find_parent()
+        if not isinstance(return_h2, bs4.Tag):
+            raise ValueError("Could not find return header")
+
+        return_table = return_h2.find_next_sibling()
+        # This table has 2 columns, type and description
+        if not isinstance(return_table, bs4.Tag):
+            raise ValueError("Could not find return value")
+        
+        # Either a table or single paragraph
+        if return_table.name == "p":
+            return [ReturnValue(return_table.get_text(strip=True), "")]
+        elif return_table.name == "table":
+            return_values: list[ReturnValue] = []
+            for tr in return_table.find_all("tr"):
+                if not isinstance(tr, bs4.Tag):
+                    raise ValueError(f"Expected a Tag element got {type(tr)}")
+
+                tds = tr.find_all("td", recursive=False)
+                if len(tds) != 2:
+                    continue
+
+                type_td, desc_td = tds
+                type_text = type_td.get_text(strip=True)
+                desc_text = desc_td.get_text(strip=True)
+                return_values.append(ReturnValue(type_text, desc_text))
+
+            return return_values
+        else:
+            raise ValueError(f"Expected a paragraph or table, got {return_table.name}")
+
+    return []
+
+
 def parse_docstring(soup: BeautifulSoup) -> DocsString:
     synopsis_tag = soup.find("p", id="synopsis")
-    hflags_tag = soup.find("a", {"name": "hFlags"})
-    hflags_h2 = hflags_tag.find_parent("h2") if hflags_tag else None
-
-    # Collect all elements between synopsis_tag and hflags_tag
-    doc_parts = []
-    current = synopsis_tag
-    while current and current != hflags_h2:
-        current = current.find_next_sibling()
-        if current and current != hflags_h2:
-            doc_parts.append(str(current))
-
-    if not doc_parts:
-        return DocsString(False, False, False)
-
-    # doc_html = "<br/>".join(doc_parts)
-    # doc_text = BeautifulSoup(doc_html, "html.parser").get_text(separator=" ", strip=True)
-
-    undoable_queryable_editable_doc = doc_parts[0]  # '<p>aaf2fcp is <b>NOT undoable</b>, <b>NOT queryable</b>, and <b>NOT editable</b>.</p>'
 
     # Check if command is undoable, queryable & editable
+    undoable_queryable_editable_doc = ""  # '<p>aaf2fcp is <b>NOT undoable</b>, <b>NOT queryable</b>, and <b>NOT editable</b>.</p>'
+    if isinstance(synopsis_tag, bs4.Tag):
+        if next_sibling := synopsis_tag.find_next_sibling():
+            undoable_queryable_editable_doc = str(next_sibling.get_text(separator=" ", strip=True))
+
     undoable = "NOT undoable" not in undoable_queryable_editable_doc
     queryable = "NOT queryable" not in undoable_queryable_editable_doc
     editable = "NOT editable" not in undoable_queryable_editable_doc
 
+    description = get_command_description(soup)
+    return_values = get_return_values(soup)
+
     return DocsString(
         undoable,
         queryable,
-        editable
+        editable,
+        description,
+        return_values
     )
 
 
