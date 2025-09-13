@@ -5,5 +5,8 @@
         "LICENSE": true,
         "dev": true
     },
+    "search.exclude": {
+        "generated-stubs": true
+    },
     "python.analysis.extraPaths": []
 }
