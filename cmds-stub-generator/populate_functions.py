@@ -66,10 +66,6 @@ def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
     )
 
 
-def create_docstring(docs: command.CommandDocumentation) -> str:
-    return docs.description
-
-
 def create_functions(command_name: str, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
     if not docs:
         return_type = "None" if command_name.isupper() else "Any"
@@ -92,8 +88,6 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
                 deprecation_message=docs.obsolete_message
             )
         ]
-
-    docstring = create_docstring(docs)
 
     functions: list[base_types.Function] = []
 

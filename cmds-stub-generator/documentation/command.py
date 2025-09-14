@@ -89,8 +89,9 @@ def get_command_description(soup: BeautifulSoup) -> str:
         if not return_header_parent:
             return ""
 
-        texts: list[str] = []
         synopsis_found = False
+        return_string = ""
+        num_found_tags = 0
         for child in body.children:
             if child == return_header_parent:
                 break
@@ -103,15 +104,32 @@ def get_command_description(soup: BeautifulSoup) -> str:
                 continue
 
             if isinstance(child, bs4.element.Tag):
-                texts.append(child.get_text(separator=" ", strip=True))
+                num_found_tags += 1
+                if num_found_tags == 1:
+                    continue
+                text = child.get_text(separator=" ", strip=True)
+                if child.name == "i":
+                    if text.startswith("*") or text.endswith("*"):
+                        text = f"<i>{text}</i>"
+                    else:
+                        text = f"*{text}*"
+                elif child.name == "b":
+                    if text.startswith("*") or text.endswith("*"):
+                        text = f"<b>{text}</b>"
+                    else:
+                        text = f"**{text}**"
+                elif child.name == "p":
+                    text = f"{text}\n"
+                elif child.name == "br":
+                    text = "\n"
+                return_string += " " + text
             elif isinstance(child, str) and child.strip():
-                texts.append(child.replace("\n", " ").replace("  ", " ").strip())
+                return_string += " " + child.replace("\n", " ").strip()
+        
+        return_string = return_string.replace("\n ", "\n")
+        return_string = return_string.replace(" \n", "\n")
 
-        if len(texts) >= 2:
-            texts.pop(0)  # Remove first element which is the undoable, queryable, editable text
-            full_text = " ".join(texts).strip()
-            if full_text:
-                return full_text
+        return return_string.strip()
 
     return ""
 
@@ -142,7 +160,7 @@ def get_return_values(soup: BeautifulSoup) -> list[ReturnValue]:
                     continue
 
                 type_td, desc_td = tds
-                type_text = type_td.get_text(strip=True)
+                type_text = type_td.get_text("", strip=True)
                 desc_text = desc_td.get_text(strip=True)
                 return_values.append(ReturnValue(type_text, desc_text))
 
@@ -289,3 +307,5 @@ def parse_html(html: str) -> CommandDocumentation:
 def get_info(url: str) -> CommandDocumentation:
     html = get_html(url)
     return parse_html(html)
+
+# get_info("https://help.autodesk.com/cloudhelp/2025/ENU/Maya-Tech-Docs/CommandsPython/isConnected.html")

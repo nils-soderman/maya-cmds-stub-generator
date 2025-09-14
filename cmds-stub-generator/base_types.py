@@ -25,12 +25,11 @@ class Function:
     positional_arguments: list[Argument]
     keyword_arguments: list[Argument]
     return_type: str | None = "Any"
-    docstring: str | None = None
 
     deprecated: bool = False
     deprecation_message: str | None = None
 
-    def get_string(self) -> str:
+    def get_string(self, docstring: str | None = None) -> str:
         string = ""
         if self.deprecated:
             string = f'@deprecated("""{self.deprecation_message}""")\n'
@@ -59,8 +58,8 @@ class Function:
 
         string += ":"
 
-        if self.docstring:
-            string += f'\n\t"""{self.docstring}"""'
+        if docstring:
+            string += f'\n\t"""{docstring}"""'
         else:
             string += '...'
 
@@ -68,18 +67,26 @@ class Function:
 
 
 class Command:
-    def __init__(self, name: str, functions: list[Function]) -> None:
+    def __init__(self, name: str, docstring: str, functions: list[Function]) -> None:
         self.name = name
+        self.docstring = docstring
         self.functions = functions
 
     def get_string(self) -> str:
         delimiter = "\n"
-        if len(self.functions) > 1:
+
+        overloading = len(self.functions) > 1
+        if overloading:
             delimiter = "\n@overload\n"
 
-        outstring = delimiter.join(func.get_string() for func in self.functions)
+        docstring = self.docstring if not overloading else None
+        outstring = delimiter.join(func.get_string(docstring) for func in self.functions)
 
-        if len(self.functions) > 1:
+        if overloading:
             outstring = f"@overload\n{outstring}"
+
+            # Add a final function definition without overload decorator, that has the docstring
+            if self.docstring:
+                outstring += f'\ndef {self.name}(*args, **kwargs):\n\t"""{self.docstring}"""'
 
         return outstring

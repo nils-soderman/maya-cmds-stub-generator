@@ -3,7 +3,7 @@ import enum
 import time
 import os
 
-from . import populate_functions, documentation, base_types, maya_info
+from . import populate_functions, documentation, base_types, maya_info, docstring
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,8 @@ def create_command(command_name: str, doc_url: str | None) -> base_types.Command
             positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
 
     functions = populate_functions.create_functions(command_name, doc_info, positional_args)
-    command = base_types.Command(command_name, functions)
+    doc_str = docstring.create_docstring(doc_info) if doc_info else ""
+    command = base_types.Command(command_name, doc_str, functions)
 
     return command
 
@@ -66,7 +67,7 @@ def generate_stubs(out_filepath: str, *, flags: GeneratorFlag = GeneratorFlag.NO
         out_filepath = os.path.join(out_filepath, "cmds.pyi")
 
     os.makedirs(os.path.dirname(out_filepath), exist_ok=True)
-    with open(out_filepath, "w") as f:
+    with open(out_filepath, "w", encoding="utf-8") as f:
         f.write(code)
 
     logger.info(f"Generated stubs in {time.perf_counter() - start_time:.2f} seconds")
