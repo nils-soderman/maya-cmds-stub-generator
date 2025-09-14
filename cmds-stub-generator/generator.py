@@ -48,7 +48,7 @@ def generate_string(flags=GeneratorFlag.NONE) -> str:
             command = create_command(command_name, docs_url)
             commands.append(command)
 
-        header_filepath = os.path.join(os.path.dirname(__file__), "header.py")
+        header_filepath = os.path.join(os.path.dirname(__file__), "template_header.py")
         with open(header_filepath, "r") as f:
             header = f.read()
 
