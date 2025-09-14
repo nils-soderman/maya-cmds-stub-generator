@@ -3,7 +3,7 @@ import enum
 import time
 import os
 
-from . import populate_functions, documentaion, base_types, maya_info
+from . import populate_functions, documentation, base_types, maya_info
 
 logger = logging.getLogger(__name__)
 
@@ -14,30 +14,37 @@ class GeneratorFlag(enum.Flag):
     """ Include all functions available in cmds, even the undocumented ones """
 
 
-def generate_string(flags=GeneratorFlag(0)) -> str:
+def create_command(command_name: str, doc_url: str | None) -> base_types.Command:
+    positional_args = maya_info.cmds_info.get_positional_args(command_name)
+    positional_args = [base_types.Argument(arg.name, arg.argument_type, arg.default) for arg in positional_args]
+
+    doc_info = None
+    if doc_url:
+        doc_info = documentation.command.get_info(doc_url)
+        if doc_info.obsolete:
+            positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
+
+    functions = populate_functions.create_functions(command_name, doc_info, positional_args)
+    command = base_types.Command(command_name, functions)
+
+    return command
+
+
+def generate_string(flags=GeneratorFlag.NONE) -> str:
     commands: list[base_types.Command] = []
 
     with maya_info.MayaStandalone():
         maya_commands = maya_info.cmds_info.get_commands()
-        documentation_commands = documentaion.index.get_commands(maya_info.version())
+        documentation_commands = documentation.index.get_commands(maya_info.version())
 
         all_commands = set(maya_commands) | set(documentation_commands.keys())
 
         for command_name in sorted(all_commands):
-            positional_args = maya_info.cmds_info.get_positional_args(command_name)
-            positional_args = [base_types.Argument(arg.name, arg.argument_type, arg.default) for arg in positional_args]
-
-            doc_info = None
-            if url := documentation_commands.get(command_name):
-                doc_info = documentaion.command.get_info(url)
-                if doc_info.obsolete:
-                    positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
-            elif not (flags & GeneratorFlag.INCLUDE_UNDOCUMENTED_FUNCTIONS):
+            docs_url = documentation_commands.get(command_name)
+            if not docs_url and not (flags & GeneratorFlag.INCLUDE_UNDOCUMENTED_FUNCTIONS):
                 continue
 
-            command = base_types.Command(command_name, )
-            populate_functions.main(command, doc_info, positional_args)
-
+            command = create_command(command_name, docs_url)
             commands.append(command)
 
         header_filepath = os.path.join(os.path.dirname(__file__), "header.py")
@@ -50,7 +57,7 @@ def generate_string(flags=GeneratorFlag(0)) -> str:
     return f"{header}\n{code_str}"
 
 
-def generate_stubs(out_filepath: str, *, flags: GeneratorFlag = GeneratorFlag(0)) -> None:
+def generate_stubs(out_filepath: str, *, flags: GeneratorFlag = GeneratorFlag.NONE) -> None:
     start_time = time.perf_counter()
 
     code = generate_string(flags)

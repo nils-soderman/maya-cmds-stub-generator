@@ -1,7 +1,7 @@
 import re
 
 from . import base_types
-from .documentaion import command
+from .documentation import command
 
 TYPE_LOOKUP = {
     "boolean": "bool",
@@ -35,7 +35,7 @@ def get_arg_type(arg_type_str: str) -> str:
     arg_type = arg_type_str.strip()
     if "|" in arg_type:
         items = {get_arg_type(x) for x in arg_type.split("|")}
-        return "|".join(items)
+        return "|".join(sorted(items))
 
     # [string, [, string, ], [, string, ]] -> tuple[str, str, str]
     # [[, boolean, float, ]] -> tuple[bool, float]
@@ -50,10 +50,6 @@ def get_arg_type(arg_type_str: str) -> str:
     return __get_type(arg_type)
 
 
-def get_return_type(arg_type_str: str) -> str:
-    ...
-
-
 def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
     if flag.arg_type is None:
         arg_type = None
@@ -61,7 +57,7 @@ def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
         arg_type = get_arg_type(flag.arg_type)
 
     if flag.multi_use:
-        arg_type = f"multiuse[{arg_type}]"  # f"Sequence[{arg_type}]|{arg_type}"
+        arg_type = f"multiuse[{arg_type}]"
 
     return base_types.Argument(
         name=flag.name_long,
@@ -74,45 +70,48 @@ def create_docstring(docs: command.CommandDocumentation) -> str:
     return docs.description
 
 
-def main(command: base_types.Command, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]):
+def create_functions(command_name: str, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
     if not docs:
-        return_type = "None" if command.name[0].isupper() else "Any"
-        command.add_function(
+        return_type = "None" if command_name.isupper() else "Any"
+        return [
             base_types.Function(
-                name=command.name,
+                name=command_name,
                 positional_arguments=positional_args,
                 keyword_arguments=[],
                 return_type=return_type
             )
-        )
-        return
+        ]
 
     if docs.obsolete:
-        command.add_function(
+        return [
             base_types.Function(
-                name=command.name,
+                name=command_name,
                 positional_arguments=positional_args,
                 keyword_arguments=[],
                 deprecated=True,
                 deprecation_message=docs.obsolete_message
             )
-        )
-        return
+        ]
 
     docstring = create_docstring(docs)
+
+    functions: list[base_types.Function] = []
 
     # Create command
     create_flag = docs.get_create_flags()
     create_args = [flag_to_arg(x) for x in create_flag]
 
-    return_types = {get_arg_type(x.type) for x in docs.returns}
+    return_types = set()
+    for x in docs.returns:
+        return_types.update(get_arg_type(x.type).split("|"))
+    return_type_str = "|".join(sorted(return_types)) if return_types else "Any"
 
-    command.add_function(
+    functions.append(
         base_types.Function(
-            name=command.name,
+            name=command_name,
             positional_arguments=positional_args,
             keyword_arguments=create_args,
-            return_type="|".join(return_types) if return_types else "Any",
+            return_type=return_type_str,
         )
     )
 
@@ -120,11 +119,11 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
     if docs.editable:
         edit_flags = docs.get_edit_flags()
         edit_args = [flag_to_arg(x) for x in edit_flags]
-        edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]", default=None))
+        edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]"))
 
-        command.add_function(
+        functions.append(
             base_types.Function(
-                name=command.name,
+                name=command_name,
                 positional_arguments=positional_args,
                 keyword_arguments=edit_args
             )
@@ -137,9 +136,9 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
             argument_type="Literal[True]",
         )
 
-        command.add_function(
+        functions.append(
             base_types.Function(
-                name=command.name,
+                name=command_name,
                 positional_arguments=positional_args,
                 keyword_arguments=[query_arg],
                 return_type="Any"
@@ -159,11 +158,13 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
             else:
                 return_type = get_arg_type(flag.arg_type) if flag.arg_type else "Any"
 
-            command.add_function(
+            functions.append(
                 base_types.Function(
-                    name=command.name,
+                    name=command_name,
                     positional_arguments=positional_args,
                     keyword_arguments=[query_arg, flag_arg],
                     return_type=return_type
                 )
             )
+
+    return functions

@@ -4,9 +4,18 @@ https://github.com/nils-soderman/maya-cmds-stub-generator
 """
 
 from __future__ import annotations
-from typing import TypeVar, TypeAlias, Union, Sequence, Callable, Literal, Any, overload
+from typing import (
+    TypeVar,
+    TypeAlias,
+    Union,
+    Sequence,
+    Callable,
+    Literal,
+    Any,
+    overload
+)
 
-try:  # warnings.deprecated was added in Python 3.13
+try:
     from warnings import deprecated  # type: ignore
 except ImportError:
     def deprecated(msg: str):

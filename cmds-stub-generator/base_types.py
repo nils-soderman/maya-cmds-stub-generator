@@ -1,9 +1,5 @@
-"""
-
-"""
 from dataclasses import dataclass
 
-from .documentaion.command import CommandDocumentation
 
 @dataclass
 class Argument:
@@ -72,21 +68,18 @@ class Function:
 
 
 class Command:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, functions: list[Function]) -> None:
         self.name = name
-        self._functions: list[Function] = []
-
-    def add_function(self, function: Function) -> None:
-        self._functions.append(function)
+        self.functions = functions
 
     def get_string(self) -> str:
         delimiter = "\n"
-        if len(self._functions) > 1:
+        if len(self.functions) > 1:
             delimiter = "\n@overload\n"
 
-        outstring = delimiter.join(func.get_string() for func in self._functions)
+        outstring = delimiter.join(func.get_string() for func in self.functions)
 
-        if len(self._functions) > 1:
+        if len(self.functions) > 1:
             outstring = f"@overload\n{outstring}"
 
         return outstring
