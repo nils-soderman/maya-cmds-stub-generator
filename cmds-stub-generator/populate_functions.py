@@ -1,3 +1,5 @@
+import re
+
 from . import base_types
 from .documentaion import command
 
@@ -13,27 +15,31 @@ TYPE_LOOKUP = {
     "time": "float",
     "timerange": "tuple[float, float]",
     "floatrange": "tuple[float, float]",
+    "double": "float",
+    "selectionitem": "str",
+    "int": "int",
 }
 
+PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
-def get_arg_type(flag: command.Flag) -> str | None:
+
+def get_arg_type(arg_type_str: str) -> str:
     def __get_type(arg: str):
-        if arg.endswith("[]"):
-            base_type = arg.removesuffix("[]")
-            arg = TYPE_LOOKUP.get(arg, arg)
+        if match := PATTERN_ARRAY.search(arg):
+            base_type = arg[:match.start()]
+            arg = TYPE_LOOKUP.get(arg.lower(), arg)
             return f"list[{__get_type(base_type)}]"
 
-        return TYPE_LOOKUP.get(arg, arg)
+        return TYPE_LOOKUP.get(arg.lower(), arg)
 
-    if flag.arg_type is None:
-        return None
-
-    arg_type = flag.arg_type.strip()
+    arg_type = arg_type_str.strip()
+    if "|" in arg_type:
+        items = {get_arg_type(x) for x in arg_type.split("|")}
+        return "|".join(items)
 
     # [string, [, string, ], [, string, ]] -> tuple[str, str, str]
     # [[, boolean, float, ]] -> tuple[bool, float]
     if "[, " in arg_type:
-        print("Broken arg type, fixing!")
         arg_type = arg_type.replace("[, ", "").replace(", ]", "")
 
     if arg_type.startswith("["):
@@ -44,8 +50,16 @@ def get_arg_type(flag: command.Flag) -> str | None:
     return __get_type(arg_type)
 
 
+def get_return_type(arg_type_str: str) -> str:
+    ...
+
+
 def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
-    arg_type = get_arg_type(flag)
+    if flag.arg_type is None:
+        arg_type = None
+    else:
+        arg_type = get_arg_type(flag.arg_type)
+
     if flag.multi_use:
         arg_type = f"multiuse[{arg_type}]"  # f"Sequence[{arg_type}]|{arg_type}"
 
@@ -54,6 +68,10 @@ def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
         argument_type=arg_type,
         default="..."
     )
+
+
+def create_docstring(docs: command.CommandDocumentation) -> str:
+    return docs.description
 
 
 def main(command: base_types.Command, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]):
@@ -81,15 +99,20 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
         )
         return
 
+    docstring = create_docstring(docs)
+
     # Create command
     create_flag = docs.get_create_flags()
     create_args = [flag_to_arg(x) for x in create_flag]
+
+    return_types = {get_arg_type(x.type) for x in docs.returns}
 
     command.add_function(
         base_types.Function(
             name=command.name,
             positional_arguments=positional_args,
-            keyword_arguments=create_args
+            keyword_arguments=create_args,
+            return_type="|".join(return_types) if return_types else "Any",
         )
     )
 
@@ -134,7 +157,7 @@ def main(command: base_types.Command, docs: command.CommandDocumentation | None,
                 # So then we cannot deduce a return type from it
                 return_type = "Any"
             else:
-                return_type = get_arg_type(flag) or "Any"
+                return_type = get_arg_type(flag.arg_type) if flag.arg_type else "Any"
 
             command.add_function(
                 base_types.Function(
