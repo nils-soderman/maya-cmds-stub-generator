@@ -65,12 +65,11 @@ class Function:
 
         return string
 
-
+@dataclass
 class Command:
-    def __init__(self, name: str, docstring: str, functions: list[Function]) -> None:
-        self.name = name
-        self.docstring = docstring
-        self.functions = functions
+    name: str
+    docstring: str
+    functions: list[Function]
 
     def get_string(self) -> str:
         delimiter = "\n"
