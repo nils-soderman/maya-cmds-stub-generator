@@ -8,5 +8,6 @@
     "search.exclude": {
         "generated-stubs": true
     },
-    "python.analysis.extraPaths": []
+    "python.analysis.extraPaths": [],
+    "python.analysis.typeCheckingMode": "standard"
 }
