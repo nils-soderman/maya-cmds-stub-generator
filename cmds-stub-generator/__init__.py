@@ -1,1 +1,1 @@
-from .generator import generate_stubs
+from .generator import generate_stubs, GeneratorFlag
