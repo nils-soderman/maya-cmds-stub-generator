@@ -3,24 +3,11 @@ import re
 from . import base_types
 from .documentation import command
 
-TYPE_LOOKUP = {
-    "boolean": "bool",
-    "string": "str",
-    "uint": "int",
-    "int64": "int",
-    "name": "str",
-    "linear": "float",
-    "angle": "float|str",
-    "script": "Callable|str",
-    "time": "float",
-    "timerange": "tuple[float, float]",
-    "floatrange": "tuple[float, float]",
-    "double": "float",
-    "selectionitem": "str",
-    "int": "int",
-}
+from . import resources
 
 PATTERN_ARRAY = re.compile(r'\[\d*\]$')
+
+TYPE_LOOKUP = resources.load("type_conversion.jsonc")
 
 
 def get_arg_type(arg_type_str: str) -> str:

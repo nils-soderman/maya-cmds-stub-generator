@@ -5,30 +5,30 @@ import re
 import logging
 import typing
 
+from .. import resources
+
 logger = logging.getLogger(__name__)
 
 PATTERN_SYNOPSIS_PREFIX = re.compile(r"Synopsis: \w+(?: \[flags\])?")
 PATTRERN_BRACKETS = re.compile(r"\[([A-Za-z. ]+)\]")
 PATTERN_PARENS = re.compile(r"\([^)]*\)")
 
-TYPE_MAP = {
-    "String": "str",
-    "Int": "int",
-    "Float": "float",
-    "on|off": "bool",
-    "Script": "str|Callable",
-    "Name": "str",
-    "Time": "str|float",
-    "Angle": "float|str",
-    "Length": "float|str",
-    "Any": "Any",
-}
+
+TYPE_MAP = resources.load("type_conversion.jsonc")
+BUILTIN_TYPES = {"str", "int", "float", "bool"}
 
 
 class Argument(typing.NamedTuple):
     name: str
     argument_type: str | None = None
     default: str | None = None
+
+
+def _type_lookup(type_str: str) -> str | None:
+    if type_str in BUILTIN_TYPES:
+        return type_str
+
+    return TYPE_MAP.get(type_str)
 
 
 def default_arg() -> list[Argument]:
@@ -52,7 +52,7 @@ def get_positional_args(command: str) -> list[Argument]:
         return default_arg()  # Could not determine, allow any args
 
     # Remove the prefix from the synopsis:
-    arg_str = PATTERN_SYNOPSIS_PREFIX.sub("", synopsis).strip()
+    arg_str = PATTERN_SYNOPSIS_PREFIX.sub("", synopsis).strip().lower()
     if not arg_str:
         return []  # No positional args
 
@@ -61,8 +61,8 @@ def get_positional_args(command: str) -> list[Argument]:
         logger.warning(f"Removing comment in parentheses from arg type for command '{command}': \"{arg_str}\"")
         arg_str = PATTERN_PARENS.sub("", arg_str).strip()
 
-    if "[...]" in arg_str: # Used in setAttr as Name[...], where it takes name then Any
-        arg_str = arg_str.replace("[...]", " Any...")
+    if "[...]" in arg_str:  # Used in setAttr as Name[...], where it takes name then Any
+        arg_str = arg_str.replace("[...]", " any...")
 
     # Args may or may not be encapsulated in brackets: [String], [Int...]
     # From what I could find the brackets seems to have no affect on the meaning
@@ -77,15 +77,15 @@ def get_positional_args(command: str) -> list[Argument]:
 
     if " " not in arg_str:  # Single type
         # Single argument, e.g. 'String' or 'Int'
-        if arg_str in TYPE_MAP:
-            return [Argument("arg", TYPE_MAP[arg_str], default="...")]
+        if valid_type := _type_lookup(arg_str):
+            return [Argument("arg", valid_type, default="...")]
 
         # Single argument or list of arguments, e.g. 'String...' or 'Int...'
-        if arg_str.endswith("...") and arg_str[0:-3] in TYPE_MAP:
-            arg_type = TYPE_MAP[arg_str[0:-3]]
-            if arg_type != "Any":
-                arg_type = f"Sequence[{arg_type}]|{arg_type}"
-            return [Argument("*args", arg_type)]
+        if arg_str.endswith("..."):
+            if valid_type := _type_lookup(arg_str[0:-3]):
+                if valid_type != "Any":
+                    valid_type = f"Sequence[{valid_type}]|{valid_type}"
+                return [Argument("*args", valid_type)]
 
     else:  # Multiple type
         args = arg_str.split()
@@ -95,26 +95,27 @@ def get_positional_args(command: str) -> list[Argument]:
             # Make each one be its own argument
             arguments: list[Argument] = []
             for i, arg in enumerate(args):
-                arg_type = TYPE_MAP.get(arg, None)
-                if not arg_type:
+                valid_type = _type_lookup(arg)
+                if not valid_type:
                     logger.warning(f"Could not determine positional arg type for command '{command}': unknown type '{arg}'")
-                arguments.append(Argument(f"arg{i+1}", arg_type, default="..."))
+                arguments.append(Argument(f"arg{i+1}", valid_type, default="..."))
 
             return arguments
 
-        else:  # `arg_str` contains '...'
+        else:  # '...' in arg_str:
             listable_types = set()
             single_types = set()
 
             for arg in args:
-                if arg.strip(".") not in TYPE_MAP:
+                valid_type = _type_lookup(arg.strip("."))
+                if not valid_type:
                     logger.warning(f"Could not determine positional arg type for command '{command}': unknown type '{arg}'")
                     return default_arg()
 
                 if arg.endswith("..."):
-                    listable_types.add(TYPE_MAP.get(arg[0:-3], None))
+                    listable_types.add(valid_type)
                 else:
-                    single_types.add(TYPE_MAP.get(arg, None))
+                    single_types.add(valid_type)
 
             arguments: list[Argument] = []
             for i, arg_type in enumerate(single_types):
@@ -127,7 +128,6 @@ def get_positional_args(command: str) -> list[Argument]:
 
             return arguments
 
-    # [String...] -> *args:str|typing.Sequence[str]
     logger.warning(f"Could not determine positional args for command '{command}': {arg_str}")
 
     return default_arg()

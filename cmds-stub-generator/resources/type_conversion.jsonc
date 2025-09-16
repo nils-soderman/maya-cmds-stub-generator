@@ -1,0 +1,26 @@
+// Lookup table for converting types from Maya documentation/help to Python types
+{
+    "any": "Any",
+
+    "boolean": "bool",
+    "on|off": "bool",
+
+    "selectionitem": "str",
+    "string": "str",
+    "name": "str",
+    
+    "uint": "int",
+    "int64": "int",
+
+    "double": "float",
+    "linear": "float",
+
+    "angle": "float|str",
+    "time": "float|str",
+    "length": "float|str",
+
+    "timerange": "tuple[float, float]",
+    "floatrange": "tuple[float, float]",
+
+    "script": "Callable|str"
+}
