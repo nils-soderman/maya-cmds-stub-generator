@@ -9,17 +9,15 @@ PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
 TYPE_LOOKUP = resources.load("type_conversion.jsonc")
 
-
 def get_arg_type(arg_type_str: str) -> str:
     def __get_type(arg: str):
         if match := PATTERN_ARRAY.search(arg):
             base_type = arg[:match.start()]
-            arg = TYPE_LOOKUP.get(arg.lower(), arg)
             return f"list[{__get_type(base_type)}]"
 
-        return TYPE_LOOKUP.get(arg.lower(), arg)
+        return TYPE_LOOKUP.get(arg, arg)
 
-    arg_type = arg_type_str.strip()
+    arg_type = arg_type_str.lower().strip()
     if "|" in arg_type:
         items = {get_arg_type(x) for x in arg_type.split("|")}
         return "|".join(sorted(items))

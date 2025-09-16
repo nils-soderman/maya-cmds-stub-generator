@@ -1,5 +1,6 @@
 import maya.cmds
 
+import builtins
 import re
 
 import logging
@@ -15,7 +16,7 @@ PATTERN_PARENS = re.compile(r"\([^)]*\)")
 
 
 TYPE_MAP = resources.load("type_conversion.jsonc")
-BUILTIN_TYPES = {"str", "int", "float", "bool"}
+BUILTIN_TYPES = {name for name, obj in vars(builtins).items() if isinstance(obj, type) and name.islower()}
 
 
 class Argument(typing.NamedTuple):

@@ -1,6 +1,8 @@
 // Lookup table for converting types from Maya documentation/help to Python types
+// All keys should be in lowercase
 {
     "any": "Any",
+    "none": "None",
 
     "boolean": "bool",
     "on|off": "bool",
