@@ -20,4 +20,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["cmds-stub-generator"]
+where = ["src"]
