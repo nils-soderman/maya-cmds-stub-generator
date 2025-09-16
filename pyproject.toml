@@ -20,5 +20,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-exclude = ["generated-stubs"]
+where = ["cmds-stub-generator"]
