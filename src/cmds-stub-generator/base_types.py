@@ -58,7 +58,7 @@ class Function:
 
         string += ":"
 
-        if docstring:
+        if docstring and not self.deprecated:
             string += f'\n\t"""{docstring}"""'
         else:
             string += '...'
