@@ -18,7 +18,7 @@
     "linear": "float",
 
     "angle": "float|str",
-    "time": "float|str",
+    "time": "float",
     "length": "float|str",
 
     "timerange": "tuple[float, float]",
