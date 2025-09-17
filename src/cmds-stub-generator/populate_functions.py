@@ -7,7 +7,8 @@ from . import resources
 
 PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
-TYPE_LOOKUP = resources.load("type_conversion.jsonc")
+TYPE_CONVERSION = resources.load("type_conversion.jsonc")
+QUERY_FLAG_MODIFIERS = resources.load("query_flag_modifiers.jsonc")
 
 def get_arg_type(arg_type_str: str) -> str:
     def __get_type(arg: str):
@@ -15,7 +16,7 @@ def get_arg_type(arg_type_str: str) -> str:
             base_type = arg[:match.start()]
             return f"list[{__get_type(base_type)}]"
 
-        return TYPE_LOOKUP.get(arg, arg)
+        return TYPE_CONVERSION.get(arg, arg)
 
     arg_type = arg_type_str.lower().strip()
     if "|" in arg_type:
@@ -35,7 +36,7 @@ def get_arg_type(arg_type_str: str) -> str:
     return __get_type(arg_type)
 
 
-def flag_to_arg(flag: command.Flag, query=False) -> base_types.Argument:
+def flag_to_arg(flag: command.Flag) -> base_types.Argument:
     if flag.arg_type is None:
         arg_type = None
     else:
@@ -110,6 +111,8 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
 
     # Query commands
     if docs.queryable:
+        modifiers = QUERY_FLAG_MODIFIERS.get(command_name, {})
+
         query_arg = base_types.Argument(
             name="query",
             argument_type="Literal[True]",
@@ -124,7 +127,17 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
             )
         )
 
-        for flag in docs.get_query_flags():
+        query_flags = docs.get_query_flags()
+        for flag in query_flags:
+            if flag.name_long in modifiers:
+                # This flag is a modifier for other query flags
+                # Skip creation of a separate function for it
+                continue
+
+            # Find all flags that are modifiers for this flag
+            modifier_flags = [x for x in query_flags if flag.name_long in modifiers.get(x.name_long, [])]
+            modifier_args = [flag_to_arg(x) for x in modifier_flags]
+
             flag_arg = base_types.Argument(
                 name=flag.name_long,
                 argument_type="Literal[True]"
@@ -141,7 +154,7 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
                 base_types.Function(
                     name=command_name,
                     positional_arguments=positional_args,
-                    keyword_arguments=[query_arg, flag_arg],
+                    keyword_arguments=[query_arg, flag_arg, *modifier_args],
                     return_type=return_type
                 )
             )

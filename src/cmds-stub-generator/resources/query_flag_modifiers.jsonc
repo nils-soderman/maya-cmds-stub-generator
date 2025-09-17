@@ -1,0 +1,9 @@
+// For certain commands, some flags only have meaning when used in combination with specific query flags.
+// For example, in `cmds.xform(query=True, translation=True, worldSpace=True)`, the `worldSpace` flag modifies the behavior of the `translation` query.
+{
+    "xform": {
+        "objectSpace": ["pivots", "translation", "rotation", "rotateAxis", "matrix", "boundingBox"],
+        "parentSpace": ["pivots", "translation", "rotation", "rotateAxis", "matrix", "boundingBox"],
+        "worldSpace": ["pivots", "translation", "rotation", "rotateAxis", "matrix", "boundingBox"]
+    }
+}
