@@ -72,14 +72,10 @@ class Command:
     functions: list[Function]
 
     def get_string(self) -> str:
-        delimiter = "\n"
-
         overloading = len(self.functions) > 1
-        if overloading:
-            delimiter = "\n@overload\n"
 
         docstring = self.docstring if not overloading else None
-        outstring = delimiter.join(func.get_string(docstring) for func in self.functions)
+        outstring = "\n@overload\n".join(func.get_string(docstring) for func in self.functions)
 
         if overloading:
             outstring = f"@overload\n{outstring}"

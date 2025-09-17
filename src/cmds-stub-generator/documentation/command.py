@@ -307,5 +307,3 @@ def parse_html(html: str) -> CommandDocumentation:
 def get_info(url: str) -> CommandDocumentation:
     html = get_html(url)
     return parse_html(html)
-
-# get_info("https://help.autodesk.com/cloudhelp/2025/ENU/Maya-Tech-Docs/CommandsPython/isConnected.html")
