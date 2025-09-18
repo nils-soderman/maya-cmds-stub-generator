@@ -9,6 +9,7 @@ PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
 TYPE_CONVERSION = resources.load("type_conversion.jsonc")
 QUERY_FLAG_MODIFIERS = resources.load("query_flag_modifiers.jsonc")
+QUERY_FLAG_RETURN_TYPES = resources.load("query_return_types.jsonc")
 
 def get_arg_type(arg_type_str: str) -> str:
     def __get_type(arg: str):
@@ -112,6 +113,7 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
     # Query commands
     if docs.queryable:
         modifiers = QUERY_FLAG_MODIFIERS.get(command_name, {})
+        query_return_type = QUERY_FLAG_RETURN_TYPES.get(command_name, {})
 
         query_arg = base_types.Argument(
             name="query",
@@ -138,12 +140,16 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
             modifier_flags = [x for x in query_flags if flag.name_long in modifiers.get(x.name_long, [])]
             modifier_args = [flag_to_arg(x) for x in modifier_flags]
 
+            
+
             flag_arg = base_types.Argument(
                 name=flag.name_long,
                 argument_type="Literal[True]"
             )
 
-            if flag.is_query_only():
+            if flag.name_long in query_return_type:
+                return_type = query_return_type[flag.name_long]
+            elif flag.is_query_only():
                 # If a flag is query only, it will have the argument type 'boolean'
                 # So then we cannot deduce a return type from it
                 return_type = "Any"

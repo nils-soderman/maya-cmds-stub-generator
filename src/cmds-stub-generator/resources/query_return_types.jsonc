@@ -1,0 +1,19 @@
+// Some return values for query functions cannot be determined from the online documentation.
+// These return types can be manually specified here.
+
+// Format:
+// {
+//    "function_name": {
+//        "query_flag": "return_type"
+//    }
+// }
+{
+    "keyframe": {
+        "indexValue": "list[int]|None",
+        "keyframeCount": "int",
+        "lastSelected": "list[float]|None",
+        "name": "list[str]|None",
+        "selected": "list[float]|None",
+        "eval": "list[float]|None"
+    }
+}
