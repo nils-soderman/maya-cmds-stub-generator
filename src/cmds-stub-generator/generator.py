@@ -24,7 +24,7 @@ def create_command(command_name: str, doc_url: str | None) -> base_types.Command
         if doc_info.obsolete:
             positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
 
-    functions = populate_functions.create_functions(command_name, doc_info, positional_args)
+    functions = populate_functions.get_functions_all(command_name, doc_info, positional_args)
     doc_str = docstring.create_docstring(doc_info) if doc_info else ""
     command = base_types.Command(command_name, doc_str, functions)
 

@@ -8,8 +8,10 @@ from . import resources
 PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
 TYPE_CONVERSION = resources.load("type_conversion.jsonc")
+CREATE_FLAG_RETURN_TYPES = resources.load("create_return_types.jsonc")
 QUERY_FLAG_MODIFIERS = resources.load("query_flag_modifiers.jsonc")
 QUERY_FLAG_RETURN_TYPES = resources.load("query_return_types.jsonc")
+
 
 def get_arg_type(arg_type_str: str) -> str:
     def __get_type(arg: str):
@@ -53,7 +55,139 @@ def flag_to_arg(flag: command.Flag) -> base_types.Argument:
     )
 
 
-def create_functions(command_name: str, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+def get_functions_create(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+    functions: list[base_types.Function] = []
+
+    create_flag = docs.get_create_flags()
+    create_args = [flag_to_arg(x) for x in create_flag]
+
+    return_types = set()
+    for x in docs.returns:
+        return_types.update(get_arg_type(x.type).split("|"))
+    if not return_types:
+        return_types.add("Any")
+
+    # Figure out if we need to split up the create functions based on known return types
+    if create_returns := CREATE_FLAG_RETURN_TYPES.get(command_name):
+        # Assume all flags with this return type has been documented and remove them from the general return types
+        return_types.difference_update(create_returns.values())
+
+        for flag_name, flag_return_type in create_returns.items():
+            if arg_to_modify := next((x for x in create_args if x.name == flag_name), None):
+                # Remove the flag from the default create args
+                create_args.remove(arg_to_modify)
+                
+                arg_to_modify.default = None
+
+                functions.append(
+                    base_types.Function(
+                        name=command_name,
+                        positional_arguments=positional_args,
+                        keyword_arguments=[arg_to_modify],
+                        return_type=flag_return_type
+                    )
+                )
+
+    return_type_str = "|".join(sorted(return_types))
+
+    functions.insert(
+        0,
+        base_types.Function(
+            name=command_name,
+            positional_arguments=positional_args,
+            keyword_arguments=create_args,
+            return_type=return_type_str,
+        )
+    )
+
+    return functions
+
+
+def get_functions_edit(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+    if not docs.editable:
+        return []
+
+    edit_flags = docs.get_edit_flags()
+    edit_args = [flag_to_arg(x) for x in edit_flags]
+    edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]"))
+
+    return [
+        base_types.Function(
+            name=command_name,
+            positional_arguments=positional_args,
+            keyword_arguments=edit_args
+        )
+    ]
+
+
+def get_functions_query(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+    if not docs.queryable:
+        return []
+
+    functions: list[base_types.Function] = []
+
+    modifiers = QUERY_FLAG_MODIFIERS.get(command_name, {})
+    query_return_type = QUERY_FLAG_RETURN_TYPES.get(command_name, {})
+
+    query_arg = base_types.Argument(
+        name="query",
+        argument_type="Literal[True]",
+    )
+
+    functions.append(
+        base_types.Function(
+            name=command_name,
+            positional_arguments=positional_args,
+            keyword_arguments=[query_arg],
+            return_type="Any"
+        )
+    )
+
+    query_flags = docs.get_query_flags()
+    for flag in query_flags:
+        if flag.name_long in modifiers:
+            # This flag is a modifier for other query flags
+            # Skip creation of a separate function for it
+            continue
+
+        # Find all flags that are modifiers for this flag
+        modifier_flags = [x for x in query_flags if flag.name_long in modifiers.get(x.name_long, [])]
+        modifier_args = [flag_to_arg(x) for x in modifier_flags]
+
+        flag_arg = base_types.Argument(
+            name=flag.name_long,
+            argument_type="Literal[True]"
+        )
+
+        if flag.name_long in query_return_type:
+            return_type = query_return_type[flag.name_long]
+        elif flag.is_query_only():
+            # If a flag is query only, it will have the argument type 'boolean'
+            # So then we cannot deduce a return type from it
+            return_type = "Any"
+        else:
+            return_type = get_arg_type(flag.arg_type) if flag.arg_type else "Any"
+
+            # Query can sometimes return something different than the flag type, most common with bool
+            # This is usually indicated in the flag description as e.g. 'in query mode, or when queried'
+            if return_type == "bool":
+                desc_lowercase = flag.description.lower()
+                if "query" in desc_lowercase or "queried" in desc_lowercase:
+                    return_type = "Any"
+
+        functions.append(
+            base_types.Function(
+                name=command_name,
+                positional_arguments=positional_args,
+                keyword_arguments=[query_arg, flag_arg, *modifier_args],
+                return_type=return_type
+            )
+        )
+
+    return functions
+
+
+def get_functions_all(command_name: str, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
     if not docs:
         return_type = "None" if command_name.isupper() else "Any"
         return [
@@ -79,90 +213,8 @@ def create_functions(command_name: str, docs: command.CommandDocumentation | Non
     functions: list[base_types.Function] = []
 
     # Create command
-    create_flag = docs.get_create_flags()
-    create_args = [flag_to_arg(x) for x in create_flag]
-
-    return_types = set()
-    for x in docs.returns:
-        return_types.update(get_arg_type(x.type).split("|"))
-    return_type_str = "|".join(sorted(return_types)) if return_types else "Any"
-
-    functions.append(
-        base_types.Function(
-            name=command_name,
-            positional_arguments=positional_args,
-            keyword_arguments=create_args,
-            return_type=return_type_str,
-        )
-    )
-
-    # Edit commands
-    if docs.editable:
-        edit_flags = docs.get_edit_flags()
-        edit_args = [flag_to_arg(x) for x in edit_flags]
-        edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]"))
-
-        functions.append(
-            base_types.Function(
-                name=command_name,
-                positional_arguments=positional_args,
-                keyword_arguments=edit_args
-            )
-        )
-
-    # Query commands
-    if docs.queryable:
-        modifiers = QUERY_FLAG_MODIFIERS.get(command_name, {})
-        query_return_type = QUERY_FLAG_RETURN_TYPES.get(command_name, {})
-
-        query_arg = base_types.Argument(
-            name="query",
-            argument_type="Literal[True]",
-        )
-
-        functions.append(
-            base_types.Function(
-                name=command_name,
-                positional_arguments=positional_args,
-                keyword_arguments=[query_arg],
-                return_type="Any"
-            )
-        )
-
-        query_flags = docs.get_query_flags()
-        for flag in query_flags:
-            if flag.name_long in modifiers:
-                # This flag is a modifier for other query flags
-                # Skip creation of a separate function for it
-                continue
-
-            # Find all flags that are modifiers for this flag
-            modifier_flags = [x for x in query_flags if flag.name_long in modifiers.get(x.name_long, [])]
-            modifier_args = [flag_to_arg(x) for x in modifier_flags]
-
-            
-
-            flag_arg = base_types.Argument(
-                name=flag.name_long,
-                argument_type="Literal[True]"
-            )
-
-            if flag.name_long in query_return_type:
-                return_type = query_return_type[flag.name_long]
-            elif flag.is_query_only():
-                # If a flag is query only, it will have the argument type 'boolean'
-                # So then we cannot deduce a return type from it
-                return_type = "Any"
-            else:
-                return_type = get_arg_type(flag.arg_type) if flag.arg_type else "Any"
-
-            functions.append(
-                base_types.Function(
-                    name=command_name,
-                    positional_arguments=positional_args,
-                    keyword_arguments=[query_arg, flag_arg, *modifier_args],
-                    return_type=return_type
-                )
-            )
+    functions.extend(get_functions_create(command_name, docs, positional_args))
+    functions.extend(get_functions_edit(command_name, docs, positional_args))
+    functions.extend(get_functions_query(command_name, docs, positional_args))
 
     return functions

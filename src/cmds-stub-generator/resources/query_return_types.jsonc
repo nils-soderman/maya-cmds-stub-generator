@@ -26,6 +26,14 @@
         "timeChange": "list[float]|None",
         "valueChange": "list[float]|None"
     },
+    // ================== P ==================
+    "polyUVSet": {
+        "allUVSets": "list[str]",
+        "allUVSetsIndices": "list[int]",
+        "allUVSetsWithCount": "list[str]",
+        "currentUVSet": "list[str]",
+        "genNewUVSet": "list[str]"
+    },
     // ================== S ==================
     "skinCluster": {
         "components": "list[str]",
