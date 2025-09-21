@@ -126,6 +126,9 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
 
     functions: list[base_types.Function] = []
 
+    general_modifier_flags = [x for x in docs.flags if not x.query and "In query mode" in x.description]
+    general_modifier_args = [flag_to_arg(x) for x in general_modifier_flags]
+
     modifiers = QUERY_FLAG_MODIFIERS.get(command_name, {})
     query_return_type = QUERY_FLAG_RETURN_TYPES.get(command_name, {})
 
@@ -138,7 +141,7 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
         base_types.Function(
             name=command_name,
             positional_arguments=positional_args,
-            keyword_arguments=[query_arg],
+            keyword_arguments=[query_arg, *general_modifier_args],
             return_type="Any"
         )
     )
@@ -179,7 +182,7 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
             base_types.Function(
                 name=command_name,
                 positional_arguments=positional_args,
-                keyword_arguments=[query_arg, flag_arg, *modifier_args],
+                keyword_arguments=[query_arg, flag_arg, *modifier_args, *general_modifier_args],
                 return_type=return_type
             )
         )
