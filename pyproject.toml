@@ -19,5 +19,10 @@ dependencies = [
     "beautifulsoup4==4.13.5",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[build-system]
+requires = ["hatchling >= 1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = ["src/*"]
+sources = { src = "cmds_stub_generator" }
