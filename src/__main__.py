@@ -13,6 +13,11 @@ def main() -> None:
         action="store_true",
         help="Include internal functions not publicly documented"
     )
+    parser.add_argument(
+        "--cache",
+        action="store_true",
+        help="Cache downloaded documentation to disk"
+    )
 
     args = parser.parse_args()
 
@@ -21,6 +26,8 @@ def main() -> None:
     flags = GeneratorFlag.NONE
     if args.undocumented:
         flags |= GeneratorFlag.INCLUDE_UNDOCUMENTED_FUNCTIONS
+    if args.cache:
+        flags |= GeneratorFlag.CACHE
 
     generator.generate_stubs(output_path, flags=flags)
 

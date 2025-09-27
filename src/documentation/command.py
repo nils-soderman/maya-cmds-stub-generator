@@ -59,7 +59,7 @@ class CommandDocumentation:
         return [flag for flag in self.flags if flag.edit]
 
 
-def get_html(url: str, use_cache: bool = True) -> str:  # TODO: Flip use_cache to false, this is only for initial development
+def get_html(url: str, use_cache: bool = False) -> str:  # TODO: Flip use_cache to false, this is only for initial development
     cache_path: None | str = None
     if use_cache:
         cache_path = os.path.join(tempfile.gettempdir(), "cmds_stub_generator_cache", hashlib.md5(url.encode()).hexdigest() + ".html")
@@ -304,6 +304,6 @@ def parse_html(html: str) -> CommandDocumentation:
     )
 
 
-def get_info(url: str) -> CommandDocumentation:
-    html = get_html(url)
+def get_info(url: str, use_cache: bool) -> CommandDocumentation:
+    html = get_html(url, use_cache=use_cache)
     return parse_html(html)

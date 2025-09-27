@@ -12,15 +12,17 @@ class GeneratorFlag(enum.Flag):
     NONE = 0
     INCLUDE_UNDOCUMENTED_FUNCTIONS = enum.auto()
     """ Include all functions available in cmds, even the undocumented ones """
+    CACHE = enum.auto()
+    """ Cache downloaded documentation to disk """
 
 
-def create_command(command_name: str, doc_url: str | None) -> base_types.Command:
+def create_command(command_name: str, doc_url: str | None, flags: GeneratorFlag) -> base_types.Command:
     positional_args = maya_info.cmds_info.get_positional_args(command_name)
     positional_args = [base_types.Argument(arg.name, arg.argument_type, arg.default) for arg in positional_args]
 
     doc_info = None
     if doc_url:
-        doc_info = documentation.command.get_info(doc_url)
+        doc_info = documentation.command.get_info(doc_url, use_cache=bool(flags & GeneratorFlag.CACHE))
         if doc_info.obsolete:
             positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
 
@@ -45,7 +47,7 @@ def generate_string(flags=GeneratorFlag.NONE) -> str:
             if not docs_url and not (flags & GeneratorFlag.INCLUDE_UNDOCUMENTED_FUNCTIONS):
                 continue
 
-            command = create_command(command_name, docs_url)
+            command = create_command(command_name, docs_url, flags)
             commands.append(command)
 
         header_filepath = os.path.join(os.path.dirname(__file__), "template_header.py")
