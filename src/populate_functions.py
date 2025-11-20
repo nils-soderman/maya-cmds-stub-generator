@@ -13,17 +13,22 @@ QUERY_FLAG_MODIFIERS = resources.load("query_flag_modifiers.jsonc")
 QUERY_FLAG_RETURN_TYPES = resources.load("query_return_types.jsonc")
 
 
-def get_arg_type(arg_type_str: str) -> str:
+def get_arg_type(arg_type_str: str, return_type: bool = False) -> str:
     def __get_type(arg: str):
         if match := PATTERN_ARRAY.search(arg):
             base_type = arg[:match.start()]
             return f"list[{__get_type(base_type)}]"
 
+        if return_type:
+            # When returning types, angle is always a float
+            if arg.lower() == "angle":
+                return "float"
+
         return TYPE_CONVERSION.get(arg, arg)
 
     arg_type = arg_type_str.lower().strip()
     if "|" in arg_type:
-        items = {get_arg_type(x) for x in arg_type.split("|")}
+        items = {get_arg_type(x, return_type=return_type) for x in arg_type.split("|")}
         return "|".join(sorted(items))
 
     # [string, [, string, ], [, string, ]] -> tuple[str, str, str]
@@ -63,7 +68,7 @@ def get_functions_create(command_name: str, docs: command.CommandDocumentation, 
 
     return_types = set()
     for x in docs.returns:
-        return_types.update(get_arg_type(x.type).split("|"))
+        return_types.update(get_arg_type(x.type, return_type=True).split("|"))
     if not return_types:
         return_types.add("Any")
 
@@ -169,7 +174,7 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
             # So then we cannot deduce a return type from it
             return_type = "Any"
         else:
-            return_type = get_arg_type(flag.arg_type) if flag.arg_type else "Any"
+            return_type = get_arg_type(flag.arg_type, return_type=True) if flag.arg_type else "Any"
 
             # Query can sometimes return something different than the flag type, most common with bool
             # This is usually indicated in the flag description as e.g. 'in query mode, or when queried'
