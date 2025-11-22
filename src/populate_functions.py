@@ -2,6 +2,7 @@ import re
 
 from . import base_types
 from .documentation import command
+from .flags import GeneratorFlag
 
 from . import resources
 
@@ -14,7 +15,7 @@ QUERY_FLAG_MODIFIERS = resources.load("query_flag_modifiers.jsonc")
 QUERY_FLAG_RETURN_TYPES = resources.load("query_return_types.jsonc")
 
 
-def get_arg_type(arg_type_str: str, return_type: bool = False) -> str:
+def get_arg_type(arg_type_str: str, *, return_type: bool = False, sequence_as_tuple: bool = False) -> str:
     def __get_type(arg: str):
         if match := PATTERN_ARRAY.search(arg):
             base_type = arg[:match.start()]
@@ -27,7 +28,7 @@ def get_arg_type(arg_type_str: str, return_type: bool = False) -> str:
 
     arg_type = arg_type_str.lower().strip()
     if "|" in arg_type:
-        items = {get_arg_type(x, return_type=return_type) for x in arg_type.split("|")}
+        items = {get_arg_type(x, return_type=return_type, sequence_as_tuple=sequence_as_tuple) for x in arg_type.split("|")}
         return "|".join(sorted(items))
 
     # [string, [, string, ], [, string, ]] -> tuple[str, str, str]
@@ -38,16 +39,20 @@ def get_arg_type(arg_type_str: str, return_type: bool = False) -> str:
     if arg_type.startswith("["):
         items = arg_type.removeprefix("[").removesuffix("]").split(",")
         items = [__get_type(x.strip()) for x in items]
-        return f"tuple[{','.join(items)}]"
+        if sequence_as_tuple:
+            return f"tuple[{','.join(items)}]"
+        else:
+            items = list(set(items))  # Remove duplicates
+            return f"Sequence[{','.join(items)}]"
 
     return __get_type(arg_type)
 
 
-def flag_to_arg(flag: command.Flag) -> base_types.Argument:
+def flag_to_arg(flag: command.Flag, *, sequence_as_tuple: bool = False) -> base_types.Argument:
     if flag.arg_type is None:
         arg_type = None
     else:
-        arg_type = get_arg_type(flag.arg_type)
+        arg_type = get_arg_type(flag.arg_type, sequence_as_tuple=sequence_as_tuple)
 
     if flag.multi_use:
         arg_type = f"multiuse[{arg_type}]"
@@ -59,15 +64,18 @@ def flag_to_arg(flag: command.Flag) -> base_types.Argument:
     )
 
 
-def get_functions_create(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+def get_functions_create(command_name: str,
+                         docs: command.CommandDocumentation,
+                         positional_args: list[base_types.Argument],
+                         flags: GeneratorFlag) -> list[base_types.Function]:
     functions: list[base_types.Function] = []
 
     create_flag = docs.get_create_flags()
-    create_args = [flag_to_arg(x) for x in create_flag]
+    create_args = [flag_to_arg(x, sequence_as_tuple=bool(flags & GeneratorFlag.TUPLE_PARAMS)) for x in create_flag]
 
     return_types = set()
     for x in docs.returns:
-        return_types.update(get_arg_type(x.type, return_type=True).split("|"))
+        return_types.update(get_arg_type(x.type, return_type=True, sequence_as_tuple=True).split("|"))
     if not return_types:
         return_types.add("Any")
 
@@ -80,7 +88,7 @@ def get_functions_create(command_name: str, docs: command.CommandDocumentation, 
             if arg_to_modify := next((x for x in create_args if x.name == flag_name), None):
                 # Remove the flag from the default create args
                 create_args.remove(arg_to_modify)
-                
+
                 arg_to_modify.default = None
 
                 functions.append(
@@ -107,12 +115,12 @@ def get_functions_create(command_name: str, docs: command.CommandDocumentation, 
     return functions
 
 
-def get_functions_edit(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+def get_functions_edit(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument], flags: GeneratorFlag) -> list[base_types.Function]:
     if not docs.editable:
         return []
 
     edit_flags = docs.get_edit_flags()
-    edit_args = [flag_to_arg(x) for x in edit_flags]
+    edit_args = [flag_to_arg(x, sequence_as_tuple=bool(flags & GeneratorFlag.TUPLE_PARAMS)) for x in edit_flags]
     edit_args.insert(0, base_types.Argument(name="edit", argument_type="Literal[True]"))
 
     return [
@@ -124,14 +132,17 @@ def get_functions_edit(command_name: str, docs: command.CommandDocumentation, po
     ]
 
 
-def get_functions_query(command_name: str, docs: command.CommandDocumentation, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+def get_functions_query(command_name: str,
+                        docs: command.CommandDocumentation,
+                        positional_args: list[base_types.Argument],
+                        flags: GeneratorFlag) -> list[base_types.Function]:
     if not docs.queryable:
         return []
 
     functions: list[base_types.Function] = []
 
     general_modifier_flags = [x for x in docs.flags if not x.query and "In query mode" in x.description]
-    general_modifier_args = [flag_to_arg(x) for x in general_modifier_flags]
+    general_modifier_args = [flag_to_arg(x, sequence_as_tuple=bool(flags & GeneratorFlag.TUPLE_PARAMS)) for x in general_modifier_flags]
 
     modifiers = QUERY_FLAG_MODIFIERS.get(command_name, {})
     query_return_type = QUERY_FLAG_RETURN_TYPES.get(command_name, {})
@@ -159,7 +170,7 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
 
         # Find all flags that are modifiers for this flag
         modifier_flags = [x for x in query_flags if flag.name_long in modifiers.get(x.name_long, [])]
-        modifier_args = [flag_to_arg(x) for x in modifier_flags]
+        modifier_args = [flag_to_arg(x, sequence_as_tuple=bool(flags & GeneratorFlag.TUPLE_PARAMS)) for x in modifier_flags]
 
         flag_arg = base_types.Argument(
             name=flag.name_long,
@@ -173,7 +184,7 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
             # So then we cannot deduce a return type from it
             return_type = "Any"
         else:
-            return_type = get_arg_type(flag.arg_type, return_type=True) if flag.arg_type else "Any"
+            return_type = get_arg_type(flag.arg_type, return_type=True, sequence_as_tuple=True) if flag.arg_type else "Any"
 
             # Query can sometimes return something different than the flag type, most common with bool
             # This is usually indicated in the flag description as e.g. 'in query mode, or when queried'
@@ -194,7 +205,10 @@ def get_functions_query(command_name: str, docs: command.CommandDocumentation, p
     return functions
 
 
-def get_functions_all(command_name: str, docs: command.CommandDocumentation | None, positional_args: list[base_types.Argument]) -> list[base_types.Function]:
+def get_functions_all(command_name: str,
+                      docs: command.CommandDocumentation | None,
+                      positional_args: list[base_types.Argument],
+                      flags: GeneratorFlag) -> list[base_types.Function]:
     if not docs:
         return_type = "None" if command_name.isupper() else "Any"
         return [
@@ -220,8 +234,8 @@ def get_functions_all(command_name: str, docs: command.CommandDocumentation | No
     functions: list[base_types.Function] = []
 
     # Create command
-    functions.extend(get_functions_create(command_name, docs, positional_args))
-    functions.extend(get_functions_edit(command_name, docs, positional_args))
-    functions.extend(get_functions_query(command_name, docs, positional_args))
+    functions.extend(get_functions_create(command_name, docs, positional_args, flags))
+    functions.extend(get_functions_edit(command_name, docs, positional_args, flags))
+    functions.extend(get_functions_query(command_name, docs, positional_args, flags))
 
     return functions

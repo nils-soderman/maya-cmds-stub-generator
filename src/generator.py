@@ -1,19 +1,13 @@
 import logging
-import enum
 import time
 import os
 
 from . import populate_functions, documentation, base_types, maya_info, docstring
+from .flags import GeneratorFlag
 
 logger = logging.getLogger(__name__)
 
 
-class GeneratorFlag(enum.Flag):
-    NONE = 0
-    INCLUDE_UNDOCUMENTED_FUNCTIONS = enum.auto()
-    """ Include all functions available in cmds, even the undocumented ones """
-    CACHE = enum.auto()
-    """ Cache downloaded documentation to disk """
 
 
 def create_command(command_name: str, doc_url: str | None, flags: GeneratorFlag) -> base_types.Command:
@@ -26,7 +20,7 @@ def create_command(command_name: str, doc_url: str | None, flags: GeneratorFlag)
         if doc_info.obsolete:
             positional_args = [base_types.Argument("*args"), base_types.Argument("**kwargs")]
 
-    functions = populate_functions.get_functions_all(command_name, doc_info, positional_args)
+    functions = populate_functions.get_functions_all(command_name, doc_info, positional_args, flags)
     doc_str = docstring.create_docstring(doc_info) if doc_info else ""
     command = base_types.Command(command_name, doc_str, functions)
 

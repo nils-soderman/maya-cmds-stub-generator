@@ -1,7 +1,8 @@
 import argparse
 import os
 
-from . import generator, GeneratorFlag
+from . import generator
+from .flags import GeneratorFlag
 
 
 def main() -> None:
@@ -18,6 +19,11 @@ def main() -> None:
         action="store_true",
         help="Cache downloaded documentation to disk"
     )
+    parser.add_argument(
+        "--tuple-params",
+        action="store_true",
+        help="Use tuple parameters for functions, will otherwise use Sequence which is less strict"
+    )
 
     args = parser.parse_args()
 
@@ -28,6 +34,8 @@ def main() -> None:
         flags |= GeneratorFlag.INCLUDE_UNDOCUMENTED_FUNCTIONS
     if args.cache:
         flags |= GeneratorFlag.CACHE
+    if args.tuple_params:
+        flags |= GeneratorFlag.TUPLE_PARAMS
 
     generator.generate_stubs(output_path, flags=flags)
 
