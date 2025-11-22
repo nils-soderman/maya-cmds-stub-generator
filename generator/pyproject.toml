@@ -29,4 +29,4 @@ files = ["requirements.txt"]
 
 [tool.hatch.build.targets.wheel]
 include = ["src/*"]
-sources = { src = "cmds_stub_generator" }
+sources = { src = "maya_cmds_stub_generator" }
