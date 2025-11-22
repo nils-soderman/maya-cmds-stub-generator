@@ -1,5 +1,0 @@
-// Some types may differ when used as return types vs parameter types
-// E.g. angle can be str when passed as a parameter but is always float when returned
-{
-    "angle": "float"
-}

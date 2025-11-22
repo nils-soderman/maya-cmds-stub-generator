@@ -1,0 +1,47 @@
+// Some return values for query functions cannot be determined from the online documentation.
+// These return types can be manually specified here.
+//
+// Format:
+// {
+//    "function_name": {
+//        "query_flag": "return_type"
+//    }
+// }
+{
+    // ================== D ==================
+    "dagPose": {
+        "atPose": "list[str]|None",
+        "bindPose": "list[str]|None",
+        "members": "list[str]|None"
+    },
+    // ================== K ==================
+    "keyframe": {
+        "eval": "list[float]|None",
+        "floatChange": "list[float]|None",
+        "indexValue": "list[int]|None",
+        "keyframeCount": "int",
+        "lastSelected": "list[float]|None",
+        "name": "list[str]|None",
+        "selected": "list[float]|None",
+        "timeChange": "list[float]|None",
+        "valueChange": "list[float]|None"
+    },
+    // ================== P ==================
+    "polyUVSet": {
+        "allUVSets": "list[str]",
+        "allUVSetsIndices": "list[int]",
+        "allUVSetsWithCount": "list[str]",
+        "currentUVSet": "list[str]",
+        "genNewUVSet": "list[str]"
+    },
+    // ================== S ==================
+    "skinCluster": {
+        "components": "list[str]",
+        "deformerTools": "list[str]",
+        "dumpInfo": "dict",
+        "geometryIndices": "list[int]",
+        "influence": "list[str]",
+        "removeUnusedInfluences": "int",
+        "weightedInfluences": "list[str]"
+    }
+}

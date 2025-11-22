@@ -3,7 +3,7 @@
         "**/__pycache__": true,
         "**/.vscode": true,
         "LICENSE": true,
-        "dev": true
+        "env": true
     },
     "search.exclude": {
         "generated-stubs": true

@@ -1,0 +1,19 @@
+// Some create function arguments works like query arguments, returning different types depending if the argument is set or not.
+// This file defines the return types when these flags are used.
+{
+    "getPanel": {
+        "atPosition": "str|None",
+        "configWithLabel": "str",
+        "containing": "str",
+        "typeOf": "str",
+        "underPointer": "str|None",
+        "withFocus": "str",
+        "withLabel": "str"
+    },
+    "scriptJob": {
+        "listConditions": "list[str]",
+        "listEvents": "list[str]",
+        "listJobs": "list[str]",
+        "exists": "bool"
+    }
+}
