@@ -5,7 +5,7 @@ mayapy.exe -m pip install git+https://github.com/nils-soderman/maya-cmds-stub-ge
 
 cd "{INSTALL_LOCATION}"
 
-"C:/Program Files/Autodesk/Maya{VERSION}/bin/mayapy.exe" -m maya_cmds_stub_generator "{OUTPUT_DIR}"
+"C:/Program Files/Autodesk/Maya{VERSION}/bin/mayapy.exe" -m maya_cmds_stub_generator "{OUTPUT_DIR}/cmds.pyi"
 ```
 
 
