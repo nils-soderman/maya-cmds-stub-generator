@@ -8,6 +8,7 @@ from . import resources
 PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
 TYPE_CONVERSION = resources.load("type_conversion.jsonc")
+TYPE_CONVERSION_RETURNS = resources.load("type_conversion_returns.jsonc")
 CREATE_FLAG_RETURN_TYPES = resources.load("create_return_types.jsonc")
 QUERY_FLAG_MODIFIERS = resources.load("query_flag_modifiers.jsonc")
 QUERY_FLAG_RETURN_TYPES = resources.load("query_return_types.jsonc")
@@ -19,10 +20,8 @@ def get_arg_type(arg_type_str: str, return_type: bool = False) -> str:
             base_type = arg[:match.start()]
             return f"list[{__get_type(base_type)}]"
 
-        if return_type:
-            # When returning types, angle is always a float
-            if arg.lower() == "angle":
-                return "float"
+        if return_type and arg in TYPE_CONVERSION_RETURNS:
+            return TYPE_CONVERSION_RETURNS[arg]
 
         return TYPE_CONVERSION.get(arg, arg)
 
