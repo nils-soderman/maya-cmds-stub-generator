@@ -15,5 +15,8 @@
         "listEvents": "list[str]",
         "listJobs": "list[str]",
         "exists": "bool"
+    },
+    "workspaceControl": {
+        "exists": "bool"
     }
 }
