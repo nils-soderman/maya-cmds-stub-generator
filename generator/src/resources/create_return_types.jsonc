@@ -18,5 +18,8 @@
     },
     "workspaceControl": {
         "exists": "bool"
+    },
+    "namespace": {
+        "exists": "bool"
     }
 }

@@ -43,5 +43,8 @@
         "influence": "list[str]",
         "removeUnusedInfluences": "int",
         "weightedInfluences": "list[str]"
+    },
+    "namespace": {
+        "isRootNamespace": "bool"
     }
 }
