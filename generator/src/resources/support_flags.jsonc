@@ -12,5 +12,8 @@
         "objectSpace": ["pivots", "translation", "rotation", "rotateAxis", "matrix", "boundingBox"],
         "parentSpace": ["pivots", "translation", "rotation", "rotateAxis", "matrix", "boundingBox"],
         "worldSpace": ["pivots", "translation", "rotation", "rotateAxis", "matrix", "boundingBox", "scale"]
+    },
+    "namespace": {
+        "recurse": ["exists"]
     }
 }
