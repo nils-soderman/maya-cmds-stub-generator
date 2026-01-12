@@ -10,6 +10,7 @@ PATTERN_ARRAY = re.compile(r'\[\d*\]$')
 
 TYPE_CONVERSION = resources.load("type_conversion.jsonc")
 TYPE_CONVERSION_RETURNS = resources.load("type_conversion_returns.jsonc")
+CREATE_FLAG_RETURN_TYPES_SPLIT = resources.load("create_return_types_split.jsonc")
 CREATE_FLAG_RETURN_TYPES = resources.load("create_return_types.jsonc")
 SUPPORT_FLAGS = resources.load("support_flags.jsonc")
 QUERY_FLAG_RETURN_TYPES = resources.load("query_return_types.jsonc")
@@ -74,15 +75,18 @@ def get_functions_create(command_name: str,
     create_args = [flag_to_arg(x, sequence_as_tuple=bool(flags & GeneratorFlag.TUPLE_PARAMS)) for x in create_flag]
 
     return_types = set()
-    for x in docs.returns:
-        return_types.update(get_arg_type(x.type, return_type=True, sequence_as_tuple=True).split("|"))
+    if command_name in CREATE_FLAG_RETURN_TYPES:
+        return_types.add(CREATE_FLAG_RETURN_TYPES[command_name])
+    else:
+        for x in docs.returns:
+            return_types.update(get_arg_type(x.type, return_type=True, sequence_as_tuple=True).split("|"))
     if not return_types:
         return_types.add("Any")
 
     cmd_support_flags: dict[str, list[str]] = SUPPORT_FLAGS.get(command_name, {})
 
     # Figure out if we need to split up the create functions based on known return types
-    if create_returns := CREATE_FLAG_RETURN_TYPES.get(command_name):
+    if create_returns := CREATE_FLAG_RETURN_TYPES_SPLIT.get(command_name):
         # Assume all flags with this return type has been documented and remove them from the general return types
         return_types.difference_update(create_returns.values())
 
